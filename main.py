@@ -92,16 +92,26 @@ async def analyze(
     print(f"🎛️ Applying brightness={brightness}, contrast={contrast}")
 
     # Apply filters BEFORE converting to dice grid
-    processed_image = apply_brightness_contrast(image, brightness, contrast)
+    # Apply filters BEFORE converting to dice grid
+processed_image = apply_brightness_contrast(image, brightness, contrast)
 
-    # ✅ Save debug image for visual confirmation
-    debug_filename = f"debug_style_{style_choice}.jpg"
-    debug_path = f"static/{debug_filename}"
-    processed_image.save(debug_path)
-    print(f"🖼️ Saved debug preview image: /static/{debug_filename}")
+# Save debug image (for viewing)
+debug_filename = f"debug_style_{style_choice}.jpg"
+debug_path = f"static/{debug_filename}"
+processed_image.save(debug_path)
 
-    # ✅ Generate dice grid from processed image
-    grid = generate_dice_grid(processed_image, grid_width, grid_height)
+# 🧠 Force-save processed image to memory buffer and reopen
+buffer = io.BytesIO()
+processed_image.save(buffer, format="PNG")
+buffer.seek(0)
+final_image = Image.open(buffer).convert("L")
+
+# ✅ Resize + generate dice grid from cleanly flushed image
+final_image = final_image.resize((grid_width, grid_height))
+pixels = list(final_image.getdata())
+values = [min(6, max(0, pixel // 40)) for pixel in pixels]
+grid = [values[i:i + grid_width] for i in range(0, len(values), grid_width)]
+
 
     # ✅ Create PDF dice map
     filename = f"dice_map_{uuid4().hex}.pdf"
