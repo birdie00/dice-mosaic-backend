@@ -8,38 +8,40 @@ from uuid import uuid4
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-# 🔗 Your deployed backend URL (no trailing slash)
+# Your Render base URL (no trailing slash)
 RENDER_BASE_URL = "https://dice-mosaic-backend.onrender.com"
 
-# Create static folder if not exist
+# Ensure static folder exists
 os.makedirs("static", exist_ok=True)
 
+# Initialize FastAPI
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Allow frontend to access this backend
+# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # You can restrict this later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 🔧 Apply brightness and contrast to image
+# 🔧 Brightness & contrast enhancements
 def apply_brightness_contrast(image: Image.Image, brightness=1.0, contrast=1.0):
+    image = image.convert("RGB")  # Ensure RGB mode for editing
     image = ImageEnhance.Brightness(image).enhance(brightness)
     image = ImageEnhance.Contrast(image).enhance(contrast)
     return image
 
-# 🎲 Convert image to grid of dice values (0–6)
+# 🎲 Convert image to dice grid (0–6 based on grayscale brightness)
 def generate_dice_grid(image: Image.Image, width: int, height: int):
-    image = image.resize((width, height)).convert("L")  # convert to grayscale
+    image = image.resize((width, height)).convert("L")  # Grayscale for brightness mapping
     pixels = list(image.getdata())
-    values = [min(6, max(0, pixel // 40)) for pixel in pixels]  # map brightness to 0–6
+    values = [min(6, max(0, pixel // 40)) for pixel in pixels]  # 0-255 → 0-6
     return [values[i:i + width] for i in range(0, len(values), width)]
 
-# 🧾 Generate PDF layout from dice grid
+# 📄 Create a simple dice map PDF
 def generate_dice_map_pdf(grid, output_path):
     c = canvas.Canvas(output_path, pagesize=letter)
     width, height = letter
@@ -64,7 +66,7 @@ def generate_dice_map_pdf(grid, output_path):
 
     c.save()
 
-# 🚀 Main endpoint
+# 🚀 Main endpoint for image upload + dice conversion
 @app.post("/analyze")
 async def analyze(
     file: UploadFile = File(...),
@@ -73,33 +75,38 @@ async def analyze(
     style_choice: int = Form(1)
 ):
     contents = await file.read()
-    image = Image.open(io.BytesIO(contents))
+    image = Image.open(io.BytesIO(contents)).convert("RGB")
 
-    # Define brightness & contrast for each style
+    # Style mappings
     style_map = {
-        1: (1.0, 1.0),  # No edit
-        2: (1.1, 1.0),  # +Brightness
-        3: (0.9, 1.0),  # -Brightness
-        4: (1.1, 1.1),  # +Bright +Contrast
-        5: (0.9, 1.1),  # -Bright +Contrast
-        6: (1.0, 1.1),  # +Contrast
+        1: (1.0, 1.0),
+        2: (1.1, 1.0),
+        3: (0.9, 1.0),
+        4: (1.1, 1.1),
+        5: (0.9, 1.1),
+        6: (1.0, 1.1),
     }
 
     brightness, contrast = style_map.get(style_choice, (1.0, 1.0))
-    print(f"▶️ Style {style_choice} → Brightness: {brightness}, Contrast: {contrast}")
+    print(f"🎛️ Style {style_choice} → Brightness: {brightness}, Contrast: {contrast}")
 
-    # Apply filters BEFORE generating grid
+    # Apply filters BEFORE converting to grayscale grid
     processed_image = apply_brightness_contrast(image, brightness, contrast)
 
-    # Generate dice values grid
+    # ✅ DEBUG: Save processed image to check output visually
+    debug_filename = f"debug_style_{style_choice}.jpg"
+    debug_path = f"static/{debug_filename}"
+    processed_image.save(debug_path)
+    print(f"🖼️ Saved debug preview image: /static/{debug_filename}")
+
+    # Generate dice grid from processed image
     grid = generate_dice_grid(processed_image, grid_width, grid_height)
 
-    # Generate and save dice map PDF
+    # Create PDF dice map
     filename = f"dice_map_{uuid4().hex}.pdf"
     pdf_path = f"static/{filename}"
     generate_dice_map_pdf(grid, pdf_path)
 
-    # Return public URL and dice grid
     return {
         "grid": grid,
         "dice_map_url": f"{RENDER_BASE_URL}/static/{filename}"
