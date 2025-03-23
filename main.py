@@ -74,6 +74,8 @@ async def analyze(
     grid_height: int = Form(...),
     style_choice: int = Form(1)
 ):
+    print(f"📦 style_choice received: {style_choice}")
+
     contents = await file.read()
     image = Image.open(io.BytesIO(contents)).convert("RGB")
 
