@@ -7,9 +7,9 @@ import os
 from uuid import uuid4
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-
+from fastapi import Form  #
 # 🔗 Your Render backend URL (no trailing slash)
-RENDER_BASE_URL = "https://your-backend-name.onrender.com"  # ← replace with your actual Render backend URL
+RENDER_BASE_URL = "https://dice-mosaic-backend.onrender.com"  # ← replace with your actual Render backend URL
 
 # Create static folder for hosting files
 os.makedirs("static", exist_ok=True)
@@ -29,6 +29,7 @@ app.add_middleware(
 
 # 🔧 Create a basic dice grid from grayscale image
 def generate_dice_grid(image, grid_size):
+    print(f"Grid size: {len(grid)} x {len(grid[0])}")
     image = image.resize((grid_size, grid_size)).convert("L")  # Grayscale
     pixels = list(image.getdata())
     values = [min(6, max(0, pixel // 40)) for pixel in pixels]  # Map brightness to 0–6
@@ -62,7 +63,10 @@ def generate_dice_map_pdf(grid, output_path):
 
 # 🔍 The /analyze endpoint
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...), grid_size: int = 40):
+async def analyze(
+    file: UploadFile = File(...),
+    grid_size: int = Form(100)  # ✅ This is the fix!
+):
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
 
