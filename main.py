@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
@@ -7,35 +7,36 @@ import os
 from uuid import uuid4
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from fastapi import Form  #
+
 # 🔗 Your Render backend URL (no trailing slash)
-RENDER_BASE_URL = "https://dice-mosaic-backend.onrender.com"  # ← replace with your actual Render backend URL
+RENDER_BASE_URL = "https://dice-mosaic-backend.onrender.com"
 
 # Create static folder for hosting files
 os.makedirs("static", exist_ok=True)
 
-# Create FastAPI app
+# ✅ Create FastAPI app
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# CORS (so your frontend can call this backend)
+# ✅ CORS Middleware (after app is defined)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to your frontend URL in production
+    allow_origins=["*"],  # For dev — allows localhost
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 🔧 Create a basic dice grid from grayscale image
+# ✅ Serve static PDFs
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 🔧 Generate dice grid
 def generate_dice_grid(image, grid_size):
-    print(f"Grid size: {len(grid)} x {len(grid[0])}")
     image = image.resize((grid_size, grid_size)).convert("L")  # Grayscale
     pixels = list(image.getdata())
-    values = [min(6, max(0, pixel // 40)) for pixel in pixels]  # Map brightness to 0–6
+    values = [min(6, max(0, pixel // 40)) for pixel in pixels]
     return [values[i:i + grid_size] for i in range(0, len(values), grid_size)]
 
-# 📄 Generate a simple dice map PDF from the grid
+# 📄 Generate dice map PDF
 def generate_dice_map_pdf(grid, output_path):
     c = canvas.Canvas(output_path, pagesize=letter)
     width, height = letter
@@ -61,27 +62,26 @@ def generate_dice_map_pdf(grid, output_path):
 
     c.save()
 
-# 🔍 The /analyze endpoint
+# 🔍 /analyze endpoint
 @app.post("/analyze")
 async def analyze(
     file: UploadFile = File(...),
-    grid_size: int = Form(100)  # ✅ This is the fix!
+    grid_size: int = Form(100)
 ):
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
 
-    # 1. Generate dice grid
+    # Generate the grid
     grid = generate_dice_grid(image, grid_size)
 
-    # 2. Generate and save PDF
+    # Save PDF
     filename = f"dice_map_{uuid4().hex}.pdf"
     pdf_path = f"static/{filename}"
     generate_dice_map_pdf(grid, pdf_path)
 
-    # 3. Build public PDF URL
+    # Build public link
     dice_map_url = f"{RENDER_BASE_URL}/static/{filename}"
 
-    # 4. Return grid and download link
     return {
         "grid": grid,
         "dice_map_url": dice_map_url
