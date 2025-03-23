@@ -8,10 +8,10 @@ from uuid import uuid4
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-# Your deployed backend URL (no trailing slash)
+# Render base URL (adjust as needed)
 RENDER_BASE_URL = "https://dice-mosaic-backend.onrender.com"
 
-# Ensure static directory exists
+# Ensure static folder exists
 os.makedirs("static", exist_ok=True)
 
 # Initialize app
@@ -27,14 +27,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Apply brightness and contrast
+# Brightness/contrast adjustment
 def apply_brightness_contrast(image: Image.Image, brightness=1.0, contrast=1.0):
     image = image.convert("RGB")
     image = ImageEnhance.Brightness(image).enhance(brightness)
     image = ImageEnhance.Contrast(image).enhance(contrast)
     return image
 
-# Generate PDF dice map
+# PDF generator
 def generate_dice_map_pdf(grid, output_path):
     c = canvas.Canvas(output_path, pagesize=letter)
     width, height = letter
@@ -59,7 +59,6 @@ def generate_dice_map_pdf(grid, output_path):
 
     c.save()
 
-# Analyze endpoint
 @app.post("/analyze")
 async def analyze(
     file: UploadFile = File(...),
@@ -70,42 +69,46 @@ async def analyze(
     contents = await file.read()
     image = Image.open(io.BytesIO(contents)).convert("RGB")
 
-    # Define brightness/contrast per style
+    # Style-to-edit map
     style_map = {
-        1: (1.0, 1.0),
-        2: (1.1, 1.0),
-        3: (0.9, 1.0),
-        4: (1.1, 1.1),
-        5: (0.9, 1.1),
-        6: (1.0, 1.1),
+        1: (1.0, 1.0),  # Normal
+        2: (1.1, 1.0),  # Brighter
+        3: (0.9, 1.0),  # Darker
+        4: (1.1, 1.1),  # Brighter + contrast
+        5: (0.9, 1.1),  # Darker + contrast
+        6: (1.0, 1.1),  # More contrast
     }
 
     brightness, contrast = style_map.get(style_choice, (1.0, 1.0))
     print(f"📦 style_choice received: {style_choice}")
     print(f"🎛️ Applying brightness={brightness}, contrast={contrast}")
 
-    # Apply image enhancements
+    # Apply brightness & contrast
     processed_image = apply_brightness_contrast(image, brightness, contrast)
 
-    # Save debug image for confirmation
+    # Save debug preview
     debug_filename = f"debug_style_{style_choice}.jpg"
     debug_path = f"static/{debug_filename}"
     processed_image.save(debug_path)
-    print(f"🖼️ Saved debug preview image: /static/{debug_filename}")
+    print(f"🖼️ Saved debug image to: /static/{debug_filename}")
 
-    # Flush enhancements to new image
+    # Round-trip to memory to ensure changes stick
     buffer = io.BytesIO()
     processed_image.save(buffer, format="PNG")
     buffer.seek(0)
     final_image = Image.open(buffer).convert("L")  # convert to grayscale
 
-    # Generate dice grid from final image
+    # Resize and generate pixel/dice grid
     final_image = final_image.resize((grid_width, grid_height))
     pixels = list(final_image.getdata())
     values = [min(6, max(0, pixel // 40)) for pixel in pixels]
     grid = [values[i:i + grid_width] for i in range(0, len(values), grid_width)]
 
-    # Create dice map PDF
+    # 🔍 Log first 20 grayscale values and dice values
+    print("🧪 Sample grayscale pixel values:", pixels[:20])
+    print("🎲 Sample dice values from grid:", values[:20])
+
+    # Create PDF dice map
     filename = f"dice_map_{uuid4().hex}.pdf"
     pdf_path = f"static/{filename}"
     generate_dice_map_pdf(grid, pdf_path)
