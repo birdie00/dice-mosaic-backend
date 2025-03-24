@@ -69,13 +69,13 @@ async def analyze(
     image = Image.open(io.BytesIO(contents)).convert("RGB")
 
     style_map = {
-        1: (1.0, 1.0),
-        2: (1.1, 1.0),
-        3: (0.9, 1.0),
-        4: (1.1, 1.1),
-        5: (0.9, 1.1),
-        6: (1.0, 1.1),
-    }
+    1: (1.0, 1.0),   # no change
+    2: (1.2, 1.0),   # +20% brightness
+    3: (0.8, 1.0),   # -20% brightness
+    4: (1.2, 1.2),   # +20% brightness & +20% contrast
+    5: (0.8, 1.2),   # -20% brightness & +20% contrast
+    6: (1.0, 1.2),   # +20% contrast
+}
 
     results = []
 
