@@ -3,3 +3,4 @@ uvicorn
 pillow
 reportlab
 python-multipart
+numpy
