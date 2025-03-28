@@ -149,6 +149,5 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
 # Save it to file
 main_path = Path("/mnt/data/main.py")
-main_path.write_text(main_py_code.strip())
 
 main_path
