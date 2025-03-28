@@ -68,10 +68,11 @@ async def analyze_image(
     style_settings = {
     1: {"brightness": 1.0, "contrast": 1.0, "sharpness": 1.0, "clahe": False, "gamma": 1.0},
     2: {"brightness": 1.3, "contrast": 1.4, "sharpness": 1.0, "clahe": True,  "gamma": 1.0},
-    3: {"brightness": 1.1, "contrast": 1.3, "sharpness": 1.1, "clahe": True,  "gamma": 0.95},  # updated
+3: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9}
+
     4: {"brightness": 0.8, "contrast": 1.2, "sharpness": 1.1, "clahe": True,  "gamma": 0.8},
     5: {"brightness": 1.0, "contrast": 1.1, "sharpness": 1.5, "clahe": False, "gamma": 1.0},
-    6: {"brightness": 1.25, "contrast": 1.2, "sharpness": 0.9, "clahe": True, "gamma": 1.05},  # updated
+6: {"brightness": 1.25, "contrast": 1.3, "sharpness": 1.4, "clahe": True, "gamma": 1.0}
 }
 
 
