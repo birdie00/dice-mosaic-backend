@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +12,7 @@ from reportlab.lib.colors import black
 import os
 import numpy as np
 import json
+import cv2
 
 app = FastAPI()
 
@@ -33,6 +33,25 @@ class GridRequest(BaseModel):
     grid_data: List[List[int]]
 
 
+def custom_preprocess_style7(pil_img: Image.Image, width: int, height: int) -> List[List[int]]:
+    cv_img = cv2.cvtColor(np.array(pil_img.convert("RGB")), cv2.COLOR_RGB2BGR)
+    gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+
+    blurred = cv2.GaussianBlur(gray, (0, 0), 3)
+    gray = cv2.addWeighted(gray, 1.5, blurred, -0.5, 0)
+
+    alpha = 1.3  # contrast
+    beta = 20    # brightness
+    adjusted = cv2.convertScaleAbs(gray, alpha=alpha, beta=beta)
+
+    resized = cv2.resize(adjusted, (width, height))
+    grid = [[int(val / 256 * 7) for val in row] for row in resized]
+    return grid
+
+
 @app.post("/analyze")
 async def analyze_image(
     file: UploadFile = File(...),
@@ -47,7 +66,6 @@ async def analyze_image(
         arr = np.array(img)
         return [[int(val / 256 * 7) for val in row] for row in arr]
 
-
     style_map = {
         1: (1.0, 1.0),
         2: (1.2, 1.0),
@@ -61,6 +79,11 @@ async def analyze_image(
     for style_id, (brightness, contrast) in style_map.items():
         grid = simulate_dice_map(image, brightness, contrast)
         styles.append({"style_id": style_id, "grid": grid})
+
+    # Style 7: Advanced OpenCV Preprocessing
+    image_original = Image.open(file.file).convert("RGB")
+    style7_grid = custom_preprocess_style7(image_original, grid_width, grid_height)
+    styles.append({"style_id": 7, "grid": style7_grid})
 
     return JSONResponse(content={"styles": styles})
 
@@ -91,12 +114,9 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     cols_per_page = int((page_width - 2 * margin) // cell_size)
     rows_per_page = int((page_height - 2 * margin) // cell_size)
 
-
     num_pages = int(np.ceil(len(grid) / rows_per_page))
 
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
-
-    dice_count = {i: 0 for i in range(1, 7)}
 
     for page_num in range(num_pages):
         start_row = page_num * rows_per_page
