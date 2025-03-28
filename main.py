@@ -77,20 +77,20 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     font_size = 5
 
     colors = {
-    0: (240, 240, 240),  # Light gray for dice_0
-    1: (255, 255, 255),
-    2: (200, 200, 200),
-    3: (150, 150, 150),
-    4: (100, 100, 100),
-    5: (50, 50, 50),
-    6: (0, 0, 0),
-}
+        0: (240, 240, 240),  # Light gray for dice_0
+        1: (255, 255, 255),
+        2: (200, 200, 200),
+        3: (150, 150, 150),
+        4: (100, 100, 100),
+        5: (50, 50, 50),
+        6: (0, 0, 0),
+    }
 
-dice_count = {i: 0 for i in range(0, 7)}
-
+    dice_count = {i: 0 for i in range(0, 7)}
 
     cols_per_page = int((page_width - 2 * margin) // cell_size)
     rows_per_page = int((page_height - 2 * margin) // cell_size)
+
 
     num_pages = int(np.ceil(len(grid) / rows_per_page))
 
