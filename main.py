@@ -1,3 +1,6 @@
+from pathlib import Path
+
+main_py_code = """
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -5,13 +8,12 @@ from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from uuid import uuid4
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.colors import black
-import os
 import numpy as np
-import json
+import os
 import cv2
 
 app = FastAPI()
@@ -33,23 +35,29 @@ class GridRequest(BaseModel):
     grid_data: List[List[int]]
 
 
-def custom_preprocess_style7(pil_img: Image.Image, width: int, height: int) -> List[List[int]]:
-    cv_img = cv2.cvtColor(np.array(pil_img.convert("RGB")), cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+def apply_enhancements(pil_img, brightness, contrast, sharpness, gamma=1.0, clahe=False):
+    if clahe:
+        cv_img = np.array(pil_img)
+        clahe_op = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cv_img = clahe_op.apply(cv_img)
+        pil_img = Image.fromarray(cv_img)
 
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    gray = clahe.apply(gray)
+    enhancer = ImageEnhance.Brightness(pil_img)
+    pil_img = enhancer.enhance(brightness)
 
-    blurred = cv2.GaussianBlur(gray, (0, 0), 3)
-    gray = cv2.addWeighted(gray, 1.5, blurred, -0.5, 0)
+    enhancer = ImageEnhance.Contrast(pil_img)
+    pil_img = enhancer.enhance(contrast)
 
-    alpha = 1.3  # contrast
-    beta = 20    # brightness
-    adjusted = cv2.convertScaleAbs(gray, alpha=alpha, beta=beta)
+    enhancer = ImageEnhance.Sharpness(pil_img)
+    pil_img = enhancer.enhance(sharpness)
 
-    resized = cv2.resize(adjusted, (width, height))
-    grid = [[int(val / 256 * 7) for val in row] for row in resized]
-    return grid
+    if gamma != 1.0:
+        arr = np.array(pil_img).astype(np.float32) / 255.0
+        arr = np.power(arr, gamma)
+        arr = np.clip(arr * 255, 0, 255).astype(np.uint8)
+        pil_img = Image.fromarray(arr)
+
+    return pil_img
 
 
 @app.post("/analyze")
@@ -60,30 +68,21 @@ async def analyze_image(
 ):
     image = Image.open(file.file).convert("L").resize((grid_width, grid_height))
 
-    def simulate_dice_map(img: Image.Image, brightness: float, contrast: float) -> List[List[int]]:
-        img = ImageEnhance.Brightness(img).enhance(brightness)
-        img = ImageEnhance.Contrast(img).enhance(contrast)
-        arr = np.array(img)
-        return [[int(val / 256 * 7) for val in row] for row in arr]
-
-    style_map = {
-        1: (1.0, 1.0),
-        2: (1.2, 1.0),
-        3: (0.8, 1.0),
-        4: (1.2, 1.2),
-        5: (0.8, 1.2),
-        6: (1.0, 1.2),
+    style_settings = {
+        1: {"brightness": 1.0, "contrast": 1.0, "sharpness": 1.0, "clahe": False, "gamma": 1.0},
+        2: {"brightness": 1.3, "contrast": 1.4, "sharpness": 1.0, "clahe": True,  "gamma": 1.0},
+        3: {"brightness": 0.9, "contrast": 0.8, "sharpness": 0.8, "clahe": False, "gamma": 1.1},
+        4: {"brightness": 0.8, "contrast": 1.2, "sharpness": 1.1, "clahe": True,  "gamma": 0.8},
+        5: {"brightness": 1.0, "contrast": 1.1, "sharpness": 1.5, "clahe": False, "gamma": 1.0},
+        6: {"brightness": 1.1, "contrast": 1.0, "sharpness": 1.0, "clahe": False, "gamma": 1.2},
     }
 
     styles = []
-    for style_id, (brightness, contrast) in style_map.items():
-        grid = simulate_dice_map(image, brightness, contrast)
+    for style_id, settings in style_settings.items():
+        processed = apply_enhancements(image.copy(), **settings)
+        arr = np.array(processed)
+        grid = [[int(val / 256 * 7) for val in row] for row in arr]
         styles.append({"style_id": style_id, "grid": grid})
-
-    # Style 7: Advanced OpenCV Preprocessing
-    image_original = Image.open(file.file).convert("RGB")
-    style7_grid = custom_preprocess_style7(image_original, grid_width, grid_height)
-    styles.append({"style_id": 7, "grid": style7_grid})
 
     return JSONResponse(content={"styles": styles})
 
@@ -100,7 +99,7 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     font_size = 5
 
     colors = {
-        0: (240, 240, 240),  # Light gray for dice_0
+        0: (240, 240, 240),
         1: (255, 255, 255),
         2: (200, 200, 200),
         3: (150, 150, 150),
@@ -115,7 +114,6 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     rows_per_page = int((page_height - 2 * margin) // cell_size)
 
     num_pages = int(np.ceil(len(grid) / rows_per_page))
-
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
 
     for page_num in range(num_pages):
@@ -146,5 +144,11 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
         c.drawString(margin, page_height - margin - (i + 1) * 14, f"Dice {val}: {count}")
 
     c.save()
-
     return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
+"""
+
+# Save it to file
+main_path = Path("/mnt/data/main.py")
+main_path.write_text(main_py_code.strip())
+
+main_path
