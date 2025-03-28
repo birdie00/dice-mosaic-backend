@@ -67,13 +67,23 @@ async def analyze_image(
 
     style_settings = {
     1: {"brightness": 1.0, "contrast": 1.0, "sharpness": 1.0, "clahe": False, "gamma": 1.0},
-    2: {"brightness": 1.3, "contrast": 1.4, "sharpness": 1.0, "clahe": True,  "gamma": 1.0},
-3: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
+    
+    2: {"brightness": 1.4, "contrast": 1.6, "sharpness": 1.5, "clahe": True, "gamma": 0.85},
+    # Very punchy, great for dull or flat lighting photos
 
-    4: {"brightness": 0.8, "contrast": 1.2, "sharpness": 1.1, "clahe": True,  "gamma": 0.8},
-    5: {"brightness": 1.0, "contrast": 1.1, "sharpness": 1.5, "clahe": False, "gamma": 1.0},
-6: {"brightness": 1.25, "contrast": 1.3, "sharpness": 1.4, "clahe": True, "gamma": 1.0}
+    3: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
+    # (kept as-is) Deeper shadows and rich tones
+
+    4: {"brightness": 0.9, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
+    # Sharpened + high contrast, best for detailed/complex images
+
+    5: {"brightness": 1.25, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
+    # Balanced but vivid — similar to Option 2 but toned down slightly
+
+    6: {"brightness": 1.25, "contrast": 1.3, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
+    # (kept as-is) Bright and punchy
 }
+
 
 
     styles = []
