@@ -66,13 +66,14 @@ async def analyze_image(
     image = Image.open(file.file).convert("L").resize((grid_width, grid_height))
 
     style_settings = {
-        1: {"brightness": 1.0, "contrast": 1.0, "sharpness": 1.0, "clahe": False, "gamma": 1.0},
-        2: {"brightness": 1.3, "contrast": 1.4, "sharpness": 1.0, "clahe": True,  "gamma": 1.0},
-        3: {"brightness": 0.9, "contrast": 0.8, "sharpness": 0.8, "clahe": False, "gamma": 1.1},
-        4: {"brightness": 0.8, "contrast": 1.2, "sharpness": 1.1, "clahe": True,  "gamma": 0.8},
-        5: {"brightness": 1.0, "contrast": 1.1, "sharpness": 1.5, "clahe": False, "gamma": 1.0},
-        6: {"brightness": 1.1, "contrast": 1.0, "sharpness": 1.0, "clahe": False, "gamma": 1.2},
-    }
+    1: {"brightness": 1.0, "contrast": 1.0, "sharpness": 1.0, "clahe": False, "gamma": 1.0},
+    2: {"brightness": 1.3, "contrast": 1.4, "sharpness": 1.0, "clahe": True,  "gamma": 1.0},
+    3: {"brightness": 1.1, "contrast": 1.3, "sharpness": 1.1, "clahe": True,  "gamma": 0.95},  # updated
+    4: {"brightness": 0.8, "contrast": 1.2, "sharpness": 1.1, "clahe": True,  "gamma": 0.8},
+    5: {"brightness": 1.0, "contrast": 1.1, "sharpness": 1.5, "clahe": False, "gamma": 1.0},
+    6: {"brightness": 1.25, "contrast": 1.2, "sharpness": 0.9, "clahe": True, "gamma": 1.05},  # updated
+}
+
 
     styles = []
     for style_id, settings in style_settings.items():
