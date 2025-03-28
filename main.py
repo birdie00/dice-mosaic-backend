@@ -67,7 +67,7 @@ async def analyze_image(
 
     style_settings = {
     
-    1: {"brightness": 0.9, "contrast": 1.8, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
+    1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
     # Sharpened + high contrast, best for detailed/complex images
     2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
     # (kept as-is) Deeper shadows and rich tones
