@@ -1,6 +1,3 @@
-from pathlib import Path
-
-main_py_code = """
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -8,7 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from uuid import uuid4
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.colors import black
@@ -145,9 +142,3 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
     c.save()
     return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
-"""
-
-# Save it to file
-main_path = Path("/mnt/data/main.py")
-
-main_path
