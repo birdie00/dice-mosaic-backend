@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -90,13 +89,12 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
     height = len(grid)
     width = len(grid[0])
-    is_portrait = height > width
+    is_landscape = width > height  # Only landscape if width > height
 
-    pagesize = portrait(letter) if is_portrait else landscape(letter)
+    pagesize = landscape(letter) if is_landscape else portrait(letter)
     page_width, page_height = pagesize
     cell_size = 6
     margin = 40
-    font_size = 2.3
     label_font_size = 2.3
     number_font_size = 3.5
 
@@ -112,7 +110,7 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
     c = canvas.Canvas(filepath, pagesize=pagesize)
 
-    # Page 1 — Title, instructions (no preview image)
+    # Page 1 — Title + Instructions
     c.setFont("Helvetica-Bold", 22)
     c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
     c.setFont("Helvetica", 12)
@@ -133,12 +131,11 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
     c.showPage()
 
-    # Page 2 — Centered full dice map, no title
+    # Page 2 — Centered Grid Map
     c.setPageSize(pagesize)
 
     grid_total_width = cell_size * width
     grid_total_height = cell_size * height
-
     grid_left = (page_width - grid_total_width) / 2 + cell_size
     grid_top = (page_height + grid_total_height) / 2
 
@@ -152,7 +149,9 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
             c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
 
             c.setStrokeColor(white)
-            c.rect(px, py - cell_size, cell_size, cell_size, fill=0, stroke=1)
+            c.setLineWidth(0.25)
+            c.setLineWidth(0.3)
+        c.rect(px, py - cell_size, cell_size, cell_size, fill=0, stroke=1)
 
             c.setFillColor(text_color)
             c.setFont("Helvetica", number_font_size)
@@ -165,6 +164,8 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
         py = grid_top + cell_size
         c.setFillColor(white)
         c.setStrokeColor(black)
+        c.setLineWidth(0.25)
+        c.setLineWidth(0.3)
         c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
         c.setFillColor(black)
         c.setFont("Helvetica", label_font_size)
@@ -177,6 +178,8 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
         py = grid_top - y * cell_size
         c.setFillColor(white)
         c.setStrokeColor(black)
+        c.setLineWidth(0.25)
+        c.setLineWidth(0.3)
         c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
         c.setFillColor(black)
         c.setFont("Helvetica", label_font_size)
