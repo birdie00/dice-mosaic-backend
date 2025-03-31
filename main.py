@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +8,7 @@ from typing import List
 from uuid import uuid4
 from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.pagesizes import landscape, portrait, letter
 from reportlab.lib.colors import black, white
 import numpy as np
 import os
@@ -30,6 +31,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class GridRequest(BaseModel):
     grid_data: List[List[int]]
+    style_id: int
 
 
 def apply_enhancements(pil_img, brightness, contrast, sharpness, gamma=1.0, clahe=False):
@@ -39,14 +41,9 @@ def apply_enhancements(pil_img, brightness, contrast, sharpness, gamma=1.0, clah
         cv_img = clahe_op.apply(cv_img)
         pil_img = Image.fromarray(cv_img)
 
-    enhancer = ImageEnhance.Brightness(pil_img)
-    pil_img = enhancer.enhance(brightness)
-
-    enhancer = ImageEnhance.Contrast(pil_img)
-    pil_img = enhancer.enhance(contrast)
-
-    enhancer = ImageEnhance.Sharpness(pil_img)
-    pil_img = enhancer.enhance(sharpness)
+    pil_img = ImageEnhance.Brightness(pil_img).enhance(brightness)
+    pil_img = ImageEnhance.Contrast(pil_img).enhance(contrast)
+    pil_img = ImageEnhance.Sharpness(pil_img).enhance(sharpness)
 
     if gamma != 1.0:
         arr = np.array(pil_img).astype(np.float32) / 255.0
@@ -87,85 +84,121 @@ async def analyze_image(
 @app.post("/generate-pdf")
 async def generate_dice_map_pdf(grid_data: GridRequest):
     grid = grid_data.grid_data
+    style_id = grid_data.style_id
     filename = f"dice_map_{uuid4().hex}.pdf"
     filepath = os.path.join("static", filename)
 
-    page_width, page_height = landscape(letter)
+    height = len(grid)
+    width = len(grid[0])
+    is_portrait = height > width
+
+    pagesize = portrait(letter) if is_portrait else landscape(letter)
+    page_width, page_height = pagesize
     cell_size = 6
     margin = 40
-    number_font_size = 3.5  # reduced by 30%
-    label_font_size = 3.0   # reduced by 50%
+    font_size = 2.3
+    label_font_size = 2.3
+    number_font_size = 3.5
+    preview_scale = 3
 
-    color_map = {
-        0: ((0, 0, 0), white),
-        1: ((255, 0, 0), white),
-        2: ((0, 0, 255), white),
-        3: ((0, 128, 0), white),
-        4: ((255, 165, 0), black),
-        5: ((255, 255, 0), black),
-        6: ((255, 255, 255), black),
+    colors = {
+        0: (0, 0, 0, white),
+        1: (255, 0, 0, white),
+        2: (0, 0, 255, white),
+        3: (0, 128, 0, white),
+        4: (255, 165, 0, black),
+        5: (255, 255, 0, black),
+        6: (255, 255, 255, black),
     }
 
-    dice_count = {i: 0 for i in range(0, 7)}
-
-    rows = len(grid)
-    cols = len(grid[0])
-    rows_per_page = rows // 2
-
-    c = canvas.Canvas(filepath, pagesize=landscape(letter))
-
-    for page_num in range(2):
-        start_row = page_num * rows_per_page
-        end_row = min(start_row + rows_per_page, rows)
-
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(margin, page_height - margin / 2, "Pipcasso Dice Map")
-        c.setFont("Helvetica", 10)
-        c.drawString(margin, page_height - margin - 12, "Project: _____________")
-        c.drawString(margin, page_height - margin - 24, f"Grid Size: {cols} x {rows}")
-        c.drawString(margin, page_height - margin - 36, "Instructions: Match each square with the correct dice number and color.")
-
-        grid_top = page_height - margin - 60
-        grid_left = margin + cell_size
-
-        # Column labels
-        for x in range(cols):
-            label = f"C{x + 1}"
-            px = grid_left + x * cell_size
-            py = grid_top + cell_size
-            c.setFillColor(white)
-            c.setStrokeColor(black)
-            c.rect(px, py, cell_size, cell_size, fill=1)
-            c.setFillColor(black)
-            c.setFont("Helvetica", label_font_size)
-            c.drawCentredString(px + cell_size / 2, py + 1.5, label)
-
-        for y, row in enumerate(grid[start_row:end_row]):
-            py = grid_top - y * cell_size
-            row_idx = start_row + y
-            # Row label
-            label = f"R{row_idx + 1}"
-            c.setFillColor(white)
-            c.setStrokeColor(black)
-            c.rect(grid_left - cell_size, py - cell_size, cell_size, cell_size, fill=1)
-            c.setFillColor(black)
-            c.setFont("Helvetica", label_font_size)
-            c.drawCentredString(grid_left - cell_size / 2, py - cell_size + 1.5, label)
-
-            for x, val in enumerate(row):
-                px = grid_left + x * cell_size
-                r, g, b = color_map.get(val, (255, 255, 255))[0]
-                text_color = color_map.get(val, (255, 255, 255))[1]
-
+    def draw_preview(c, x, y):
+        for j, row in enumerate(grid[:20]):
+            for i, val in enumerate(row[:20]):
+                if val not in colors:
+                    continue
+                r, g, b, _ = colors[val]
+                px = x + i * preview_scale
+                py = y - j * preview_scale
                 c.setFillColorRGB(r / 255, g / 255, b / 255)
-                c.setStrokeColor(white)
-                c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+                c.rect(px, py - preview_scale, preview_scale, preview_scale, fill=1, stroke=0)
+                c.setFillColor(black)
+                c.setFont("Helvetica", 1)
+                c.drawCentredString(px + preview_scale / 2, py - preview_scale + 0.2, str(val))
 
-                c.setFillColor(text_color)
-                c.setFont("Helvetica", number_font_size)
-                c.drawCentredString(px + cell_size / 2, py - cell_size + 1.5, str(val))
+    c = canvas.Canvas(filepath, pagesize=pagesize)
 
-        c.showPage()
+    # Page 1 — Title, instructions, and preview
+    c.setFont("Helvetica-Bold", 22)
+    c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
+    c.setFont("Helvetica", 12)
+    c.drawString(margin, page_height - margin - 30, f"Project Name: (To Be Filled)")
+    c.drawString(margin, page_height - margin - 50, f"Grid Size: {width} x {height}")
+
+    instructions = [
+        "Instructions:",
+        "1. Each number in the grid represents a dice face (0–6).",
+        "2. Dice color is determined by number:",
+        "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
+        "3. Match the dice number and position to recreate the image.",
+        "4. Use row (R) and column (C) labels to help place dice accurately.",
+    ]
+
+    c.setFont("Helvetica", 10)
+    for i, line in enumerate(instructions):
+        c.drawString(margin, page_height - margin - 80 - (i * 16), line)
+
+    # Move preview down
+    preview_x = margin
+    preview_y = page_height - margin - 220
+    draw_preview(c, preview_x, preview_y)
+
+    c.showPage()
+
+    # Page 2 — Dice Map Only
+    c.setPageSize(pagesize)
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(page_width / 2, page_height - margin, "Pipcasso Dice Map")
+
+    grid_top = page_height - margin - 20
+    grid_left = margin + cell_size
+
+    for y, row in enumerate(grid):
+        for x, val in enumerate(row):
+            r, g, b, text_color = colors[val]
+            px = grid_left + x * cell_size
+            py = grid_top - y * cell_size
+
+            c.setFillColorRGB(r / 255, g / 255, b / 255)
+            c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
+
+            c.setFillColor(white)
+            c.rect(px, py - cell_size, cell_size, cell_size, fill=0, stroke=1)
+
+            c.setFillColor(text_color)
+            c.setFont("Helvetica", number_font_size)
+            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - 1, str(val))
+
+    # Column headers
+    for x in range(width):
+        label = f"C{x + 1}"
+        px = grid_left + x * cell_size
+        py = grid_top + cell_size
+        c.setFillColor(white)
+        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+        c.setFillColor(black)
+        c.setFont("Helvetica", label_font_size)
+        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - 1, label)
+
+    # Row headers
+    for y in range(height):
+        label = f"R{y + 1}"
+        px = margin
+        py = grid_top - y * cell_size
+        c.setFillColor(white)
+        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+        c.setFillColor(black)
+        c.setFont("Helvetica", label_font_size)
+        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - 1, label)
 
     c.save()
     return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
