@@ -65,7 +65,6 @@ async def analyze_image(
         4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
         5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
         6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
-        7: {"brightness": 1.2, "contrast": 1.4, "sharpness": 1.6, "clahe": True, "gamma": 1.0},
     }
 
     styles = []
@@ -86,7 +85,6 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
     height = len(grid)
     width = len(grid[0])
-    # Use portrait PDF for square/portrait crops, landscape for landscape crops
     is_portrait = height >= width
     pagesize = portrait(letter) if is_portrait else landscape(letter)
     page_width, page_height = pagesize
@@ -95,22 +93,21 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     margin = 40
     label_font_size = 2.3
     number_font_size = 3.5
-    thin_border = 0.5  # thin border thickness
+    thin_border = 0.5
 
-    # Colors: (r, g, b, text_color)
     colors = {
-        0: (0, 0, 0, white),           # dice_0: black background, white text
-        1: (255, 0, 0, white),           # dice_1: red background, white text
-        2: (0, 0, 255, white),           # dice_2: blue background, white text
-        3: (0, 128, 0, white),           # dice_3: green background, white text
-        4: (255, 165, 0, black),         # dice_4: orange background, black text
-        5: (255, 255, 0, black),         # dice_5: yellow background, black text
-        6: (255, 255, 255, black),       # dice_6: white background, black text
+        0: (0, 0, 0, white),
+        1: (255, 0, 0, white),
+        2: (0, 0, 255, white),
+        3: (0, 128, 0, white),
+        4: (255, 165, 0, black),
+        5: (255, 255, 0, black),
+        6: (255, 255, 255, black),
     }
 
     c = canvas.Canvas(filepath, pagesize=pagesize)
 
-    # Page 1 – Title, project name, grid size, and instructions (no preview image)
+    # Page 1
     c.setFont("Helvetica-Bold", 22)
     c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
     c.setFont("Helvetica", 12)
@@ -129,7 +126,7 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
         c.drawString(margin, page_height - margin - 80 - (i * 16), line)
     c.showPage()
 
-    # Page 2 – Dice Map Only, centered grid
+    # Page 2
     c.setPageSize(pagesize)
     grid_total_width = cell_size * width
     grid_total_height = cell_size * height
@@ -151,14 +148,12 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
             c.setFillColor(text_color)
             c.setFont("Helvetica", number_font_size)
-            # Center text both horizontally and vertically (adjust y-offset as needed)
             c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (number_font_size / 2) * 0.3, str(val))
 
-    # Column headers – snapped to the top of the grid
     for x in range(width):
         label = f"C{x + 1}"
         px = grid_left + x * cell_size
-        py = grid_top + cell_size  # directly above the grid
+        py = grid_top + cell_size
         c.setFillColor(white)
         c.setStrokeColor(black)
         c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
@@ -166,7 +161,6 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
-    # Row headers – with a border on every row
     for y in range(height):
         label = f"R{y + 1}"
         px = grid_left - cell_size
