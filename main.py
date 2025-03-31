@@ -8,7 +8,7 @@ from uuid import uuid4
 from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, letter
-from reportlab.lib.colors import black, white, HexColor
+from reportlab.lib.colors import black, white, red, blue, green, yellow, orange
 import numpy as np
 import os
 import cv2
@@ -89,71 +89,72 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     page_width, page_height = landscape(letter)
     cell_size = 6
     margin = 40
-    font_size = 4
-    grid_width = len(grid[0])
-    grid_height = len(grid)
+    font_size = 4  # for numbers inside blocks
+    label_font_size = int(font_size * 0.75)  # for row/column headers
 
-    text_colors = {0: white, 1: white, 2: white, 3: black, 4: black, 5: black, 6: black}
-    fill_colors = {
-        0: black,
-        1: HexColor("#FF4B4B"),
-        2: HexColor("#4B7BFF"),
-        3: HexColor("#FFA500"),
-        4: HexColor("#3CB371"),
-        5: HexColor("#FFFF66"),
-        6: white
+    color_styles = {
+        0: {"fill": black, "text": white},
+        1: {"fill": red, "text": white},
+        2: {"fill": blue, "text": white},
+        3: {"fill": orange, "text": black},
+        4: {"fill": green, "text": black},
+        5: {"fill": yellow, "text": black},
+        6: {"fill": white, "text": black},
     }
 
-    rows_per_page = grid_height // 2
-    num_pages = 2
+    total_rows = len(grid)
+    total_cols = len(grid[0]) if total_rows > 0 else 0
+    half_rows = total_rows // 2
 
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
 
-    for page_num in range(num_pages):
-        start_row = page_num * rows_per_page
-        end_row = min(start_row + rows_per_page, grid_height)
+    for page_num in range(2):
+        start_row = page_num * half_rows
+        end_row = min(start_row + half_rows, total_rows)
 
-        # Title and instructions
-        c.setFont("Helvetica-Bold", 14)
-        c.drawCentredString(page_width / 2, page_height - 30, "Pipcasso Dice Map")
+        # HEADER INFO
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(margin, page_height - margin / 2, "Pipcasso Dice Map")
+
         c.setFont("Helvetica", 10)
-        c.drawString(margin, page_height - 45, f"Project: [Insert Name Here]")
-        c.drawString(margin, page_height - 60, f"Grid Size: {grid_width} x {grid_height}")
-        c.drawString(margin, page_height - 75, "Instructions: Match the dice number in each block.")
+        c.drawString(margin, page_height - margin - 12, f"Project: [Add Name]")
+        c.drawString(margin, page_height - margin - 26, f"Dimensions: {total_cols} x {total_rows}")
+        c.drawString(margin, page_height - margin - 40, "Instructions: Place dice following color and number in grid. Match R/C labels.")
 
-        offset_y = page_height - margin - 100
+        top_offset = page_height - margin - 60
+        left_offset = margin + cell_size
 
-        for y, row in enumerate(grid[start_row:end_row]):
-            row_index = start_row + y
-            for x, val in enumerate(row):
-                px = margin + (x + 1) * cell_size
-                py = offset_y - y * cell_size
+        # DRAW COLUMN HEADINGS
+        for col in range(total_cols):
+            x = left_offset + col * cell_size
+            c.setFillColor(white)
+            c.rect(x, top_offset, cell_size, cell_size, fill=1, stroke=1)
+            c.setFillColor(black)
+            c.setFont("Helvetica", label_font_size)
+            c.drawCentredString(x + cell_size / 2, top_offset + 1.5, f"C{col+1}")
 
-                c.setStrokeColor(white)
-                c.setLineWidth(0.2)
-                c.setFillColor(fill_colors[val])
-                c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+        # DRAW GRID
+        for row_idx, row in enumerate(grid[start_row:end_row]):
+            y = top_offset - (row_idx + 1) * cell_size
 
-                c.setFillColor(text_colors[val])
+            # Row label
+            c.setFillColor(white)
+            c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
+            c.setFillColor(black)
+            c.setFont("Helvetica", label_font_size)
+            c.drawCentredString(margin + cell_size / 2, y + 1.5, f"R{start_row + row_idx + 1}")
+
+            for col_idx, val in enumerate(row):
+                color = color_styles.get(val, {"fill": white, "text": black})
+                x = left_offset + col_idx * cell_size
+                c.setFillColor(color["fill"])
+                c.rect(x, y, cell_size, cell_size, fill=1, stroke=1)
+                c.setFillColor(color["text"])
                 c.setFont("Helvetica", font_size)
-                c.drawCentredString(px + cell_size / 2, py - cell_size + 1.5, str(val))
+                c.drawCentredString(x + cell_size / 2, y + 1.5, str(val))
 
-        for y in range(start_row, end_row):
-            row_y = offset_y - (y - start_row) * cell_size
-            c.setStrokeColor(black)
-            c.setFillColor(black)
-            c.setFont("Helvetica", 3.5)
-            c.rect(margin, row_y - cell_size, cell_size, cell_size, fill=0)
-            c.drawCentredString(margin + cell_size / 2, row_y - cell_size + 1.5, f"R{y+1}")
-
-        for x in range(grid_width):
-            col_x = margin + (x + 1) * cell_size
-            c.setStrokeColor(black)
-            c.setFillColor(black)
-            c.setFont("Helvetica", 3.5)
-            c.rect(col_x, offset_y + cell_size, cell_size, cell_size, fill=0)
-            c.drawCentredString(col_x + cell_size / 2, offset_y + cell_size + 1.5, f"C{x+1}")
-
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(margin, margin / 2, f"Page {page_num + 1} of 2")
         c.showPage()
 
     c.save()
