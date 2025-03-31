@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from uuid import uuid4
 from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
@@ -30,6 +30,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class GridRequest(BaseModel):
     grid_data: List[List[int]]
+    project_name: Optional[str] = "Untitled"
 
 
 def apply_enhancements(pil_img, brightness, contrast, sharpness, gamma=1.0, clahe=False):
@@ -66,23 +67,13 @@ async def analyze_image(
     image = Image.open(file.file).convert("L").resize((grid_width, grid_height))
 
     style_settings = {
-    
-    1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
-    # Sharpened + high contrast, best for detailed/complex images
-    2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
-    # (kept as-is) Deeper shadows and rich tones
-    3: {"brightness": 1.4, "contrast": 1.6, "sharpness": 1.5, "clahe": True, "gamma": 0.85},
-    # Very punchy, great for dull or flat lighting photos
-    4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
-    # (kept as-is) Bright and punchy
-    5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
-    6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
-    # Balanced but vivid — similar to Option 2 but toned down slightly
-
-    
-}
-
-
+        1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
+        2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
+        3: {"brightness": 1.4, "contrast": 1.6, "sharpness": 1.5, "clahe": True, "gamma": 0.85},
+        4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
+        5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
+        6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
+    }
 
     styles = []
     for style_id, settings in style_settings.items():
@@ -97,43 +88,74 @@ async def analyze_image(
 @app.post("/generate-pdf")
 async def generate_dice_map_pdf(grid_data: GridRequest):
     grid = grid_data.grid_data
+    project_name = grid_data.project_name or "Untitled"
     filename = f"dice_map_{uuid4().hex}.pdf"
     filepath = os.path.join("static", filename)
 
     page_width, page_height = landscape(letter)
     cell_size = 6
-    margin = 40
+    margin = 50
     font_size = 5
 
-    colors = {
-        0: (240, 240, 240),
-        1: (255, 255, 255),
-        2: (200, 200, 200),
-        3: (150, 150, 150),
-        4: (100, 100, 100),
-        5: (50, 50, 50),
-        6: (0, 0, 0),
+    dice_colors = {
+        0: (0, 0, 0),         # black
+        1: (255, 0, 0),       # red
+        2: (0, 0, 255),       # blue
+        3: (255, 165, 0),     # orange
+        4: (0, 128, 0),       # green
+        5: (255, 255, 0),     # yellow
+        6: (255, 255, 255),   # white
     }
 
     dice_count = {i: 0 for i in range(0, 7)}
-
-    cols_per_page = int((page_width - 2 * margin) // cell_size)
-    rows_per_page = int((page_height - 2 * margin) // cell_size)
+    cols_per_page = int((page_width - 2 * margin - cell_size) // cell_size)
+    rows_per_page = int((page_height - 2 * margin - cell_size) // cell_size)
 
     num_pages = int(np.ceil(len(grid) / rows_per_page))
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
+
+    width = len(grid[0])
+    height = len(grid)
 
     for page_num in range(num_pages):
         start_row = page_num * rows_per_page
         end_row = min(start_row + rows_per_page, len(grid))
 
+        # HEADER
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(margin, page_height - margin + 20, "Pipcasso Dice Map")
+        c.setFont("Helvetica", 10)
+        c.drawString(margin, page_height - margin + 5, f"Project Name: {project_name}")
+        c.drawString(margin + 250, page_height - margin + 5, f"Dimensions: {width} W x {height} H")
+        c.drawString(margin + 450, page_height - margin + 5, f"Page {page_num + 1} of {num_pages}")
+
+        # Instructions
+        instructions = (
+            "Match the numbers on this blueprint design to the corresponding dice faces to create your custom dice piece. "
+            "Blank sided (0 Face) dice are created by using a black sharpie (or similar) to colour in the 1 side of the dice."
+        )
+        c.setFont("Helvetica", 8)
+        c.drawString(margin, page_height - margin + 35, instructions)
+
+        # Column labels
+        for x in range(min(cols_per_page, width)):
+            label = f"C{x + 1}"
+            px = margin + x * cell_size + cell_size
+            c.setFont("Helvetica", 5)
+            c.drawCentredString(px + cell_size / 2, page_height - margin + 2, label)
+
+        # Row labels and Grid
         for y, row in enumerate(grid[start_row:end_row]):
-            for x, val in enumerate(row):
-                if val not in colors:
+            label = f"R{start_row + y + 1}"
+            py = page_height - margin - y * cell_size
+            c.setFont("Helvetica", 5)
+            c.drawString(margin - 25, py - cell_size / 2, label)
+
+            for x, val in enumerate(row[:cols_per_page]):
+                if val not in dice_colors:
                     continue
-                px = margin + x * cell_size
-                py = page_height - margin - y * cell_size
-                r, g, b = colors[val]
+                px = margin + x * cell_size + cell_size
+                r, g, b = dice_colors[val]
                 c.setFillColorRGB(r / 255, g / 255, b / 255)
                 c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
                 c.setFillColor(black)
@@ -141,14 +163,17 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
                 c.drawCentredString(px + cell_size / 2, py - cell_size + 0.5, str(val))
                 dice_count[val] += 1
 
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(margin, margin / 2, f"Page {page_num + 1} of {num_pages}")
         c.showPage()
 
+    # Dice Count Summary
     c.setFont("Helvetica-Bold", 12)
     c.drawString(margin, page_height - margin / 2, "Dice Count Summary")
-    for i, (val, count) in enumerate(sorted(dice_count.items())):
-        c.drawString(margin, page_height - margin - (i + 1) * 14, f"Dice {val}: {count}")
+    c.setFont("Helvetica", 10)
+    offset = 0
+    for val, count in sorted(dice_count.items()):
+        name = ["Black", "Red", "Blue", "Orange", "Green", "Yellow", "White"][val]
+        c.drawString(margin, page_height - margin - (offset + 1) * 14, f"{name} (Face {val}): {count}")
+        offset += 1
 
     c.save()
     return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
