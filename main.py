@@ -31,6 +31,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 class GridRequest(BaseModel):
     grid_data: List[List[int]]
     style_id: int
+    project_name: str  # ✅ add this line
 
 
 def apply_enhancements(pil_img, brightness, contrast, sharpness, gamma=1.0, clahe=False):
@@ -80,6 +81,7 @@ async def analyze_image(
 async def generate_dice_map_pdf(grid_data: GridRequest):
     grid = grid_data.grid_data
     style_id = grid_data.style_id
+    project_name = grid_data.project_name  # ✅ extract project name
     filename = f"dice_map_{uuid4().hex}.pdf"
     filepath = os.path.join("static", filename)
 
@@ -111,7 +113,7 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     c.setFont("Helvetica-Bold", 22)
     c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
     c.setFont("Helvetica", 12)
-    c.drawString(margin, page_height - margin - 30, "Project Name: (To Be Filled)")
+    c.drawString(margin, page_height - margin - 30, f"Project Name: {project_name}")
     c.drawString(margin, page_height - margin - 50, f"Grid Size: {width} x {height}")
     instructions = [
         "Instructions:",
