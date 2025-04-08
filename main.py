@@ -8,7 +8,7 @@ from uuid import uuid4
 from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, portrait, letter
-from reportlab.lib.colors import black, white, gray, red, lightgrey, blue, yellow, green, orange
+from reportlab.lib.colors import black, white, gray
 import numpy as np
 import os
 import cv2
@@ -149,6 +149,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     title_width = c.stringWidth(title, "Helvetica-Bold", 22)
     c.drawString((page_width - title_width) / 2, page_height - margin, title)
 
+    # Project details and instructions (left)
     left_x = margin
     left_y = page_height - margin - 40
     c.setFont("Helvetica", 12)
@@ -167,7 +168,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(left_x, left_y - 50 - (i * 14), line)
 
-    # Dice counts (right side)
+    # Dice counts (right side key)
     dice_counts = {i: 0 for i in range(7)}
     for row in grid:
         for val in row:
@@ -182,33 +183,25 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.drawString(right_x + 60, right_y - 16, "Dice")
     c.drawString(right_x + 110, right_y - 16, "Count")
 
-    color_rgb = {
-        0: (0, 0, 0), 1: (255, 0, 0), 2: (0, 0, 255), 3: (255, 165, 0),
-        4: (0, 128, 0), 5: (255, 255, 0), 6: (255, 255, 255)
-    }
-
     c.setFont("Helvetica", 10)
     for i in range(7):
         y = right_y - 32 - (i * 14)
-        r, g, b = color_rgb[i]
+        r, g, b, text_color = colors[i]
         c.setFillColorRGB(r / 255, g / 255, b / 255)
         c.rect(right_x, y, 20, 10, fill=1, stroke=1)
 
-        c.setFillColor(black if i not in [0, 6] else white)
+        c.setFillColor(text_color)
         c.drawString(right_x + 25, y, f"{i} face")
         c.setFillColor(black)
         c.drawString(right_x + 75, y, str(dice_counts[i]))
 
     # Grid Preview (bottom half)
-    preview_top = page_height / 2
     preview_height = page_height / 2 - margin
     preview_width = page_width - 2 * margin
     cell_size = min(preview_width / width, preview_height / height)
-    # Compute top position for vertically centering in bottom half
     grid_height_in_points = cell_size * height
     grid_y_center = (page_height / 2 - grid_height_in_points) / 2
 
-    # Use translate to shift the grid down
     c.saveState()
     c.translate(0, grid_y_center)
     draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors, margin, 1.5, 2.0, ghost=False)
