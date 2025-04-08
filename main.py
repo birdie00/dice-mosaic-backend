@@ -211,34 +211,41 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     ]
 
     for quadrant_name, start_x, start_y, quad_width, quad_height in quadrants:
-        c.setPageSize(pagesize)
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(margin, page_height - margin, f"Project: {project_name}")
-        c.setFont("Helvetica", 14)
-        c.drawString(margin, page_height - margin - 20, f"Quadrant: {quadrant_name}")
+    c.setPageSize(pagesize)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(margin, page_height - margin, f"Project: {project_name}")
+    c.setFont("Helvetica", 14)
+    c.drawString(margin, page_height - margin - 20, f"Quadrant: {quadrant_name}")
 
-        draw_section_preview(
-            c, width, height,
-            start_x, start_y,
-            quad_width, quad_height,
-            page_width - margin - 90,
-            page_height - margin - 20
-        )
+    # Set preview height to match the height of header text block (~40 units)
+preview_text_height = 40  # Matches height used by header (title + quadrant)
+preview_aspect_ratio = full_height / full_width
+preview_h = preview_text_height
+preview_w = preview_h / preview_aspect_ratio
 
-# Shrink preview area slightly to avoid overlapping instructions
-max_preview_height = page_height * 0.5  # was too tall before
-max_preview_width = page_width - 2 * margin
-cell_size = min(max_preview_width / width, max_preview_height / height)
+draw_section_preview(
+    c, width, height,
+    start_x, start_y,
+    quad_width, quad_height,
+    page_width - margin - preview_w,
+    page_height - margin - 10  # slight vertical pad
+)
 
-        draw_grid_section(
-            c, grid,
-            start_x, start_y,
-            quad_width, quad_height,
-            cell_size, start_x, start_y,
-            colors, margin, 2.5, 4.5,
-            ghost=True
-        )
-        c.showPage()
+
+    available_height = page_height - (margin + 80)
+    available_width = page_width - 2 * margin
+    cell_size = min(available_width / quad_width, available_height / quad_height)
+
+    draw_grid_section(
+        c, grid,
+        start_x, start_y,
+        quad_width, quad_height,
+        cell_size, start_x, start_y,
+        colors, margin, 2.5, 4.5,
+        ghost=True
+    )
+    c.showPage()
+
 
     c.save()
 
