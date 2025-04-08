@@ -77,70 +77,7 @@ async def analyze_image(
     return JSONResponse(content={"styles": styles})
 
 
-def draw_section_preview(c, full_width, full_height, view_x, view_y, view_w, view_h, x_offset, y_offset):
-    preview_text_height = 40
-    preview_h = preview_text_height
-    preview_w = preview_h * full_width / full_height
-    cell_size_w = preview_w / full_width
-    cell_size_h = preview_h / full_height
-    top_left_x = x_offset
-    top_left_y = y_offset - preview_h
-
-    c.setStrokeColor(lightgrey)
-    c.setFillColor(lightgrey)
-    c.rect(top_left_x, top_left_y, preview_w, preview_h, fill=1)
-
-    c.setStrokeColor(red)
-    highlight_x = top_left_x + view_x * cell_size_w
-    highlight_y = top_left_y + (full_height - view_y - view_h) * cell_size_h
-    c.rect(highlight_x, highlight_y, view_w * cell_size_w, view_h * cell_size_h, fill=0, stroke=1)
-
-
-def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, global_offset_x, global_offset_y,
-                      colors, margin, label_font_size, number_font_size, ghost=False):
-    page_width, page_height = c._pagesize
-    grid_total_width = cell_size * width
-    grid_total_height = cell_size * height
-    grid_left = (page_width - grid_total_width) / 2
-    grid_top = (page_height + grid_total_height) / 2 - 40
-
-    for y in range(height):
-        for x in range(width):
-            val = grid[start_y + y][start_x + x]
-            r, g, b, text_color = colors[val]
-            px = grid_left + x * cell_size
-            py = grid_top - y * cell_size
-            is_ghost_cell = ghost and (x == width - 1 or y == height - 1)
-            c.setFillColor(gray if is_ghost_cell else (r / 255, g / 255, b / 255))
-            c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
-            c.setFillColor(gray if is_ghost_cell else text_color)
-            c.setFont("Helvetica", number_font_size + 2)
-            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - ((number_font_size + 2) / 2) * 0.3, str(val))
-
-    for x in range(width):
-        label = f"C{start_x + x + 1}"
-        px = grid_left + x * cell_size
-        py = grid_top + cell_size
-        is_ghost_label = ghost and x == width - 1
-        c.setFillColor(white)
-        c.setStrokeColor(gray if is_ghost_label else black)
-        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(gray if is_ghost_label else black)
-        c.setFont("Helvetica", label_font_size)
-        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
-
-    for y in range(height):
-        label = f"R{start_y + y + 1}"
-        px = grid_left - cell_size
-        py = grid_top - y * cell_size
-        is_ghost_label = ghost and y == height - 1
-        c.setFillColor(white)
-        c.setStrokeColor(gray if is_ghost_label else black)
-        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(gray if is_ghost_label else black)
-        c.setFont("Helvetica", label_font_size)
-        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
-
+# FIX: Limit grid drawing area to avoid overlapping instructions
 
 def generate_better_dice_pdf(filepath, grid, project_name):
     height = len(grid)
@@ -177,14 +114,16 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         "4. Ghosted rows/columns help you align your sections correctly.",
     ]
     c.setFont("Helvetica", 10)
+    y_start = page_height - margin - 80
     for i, line in enumerate(instructions):
-        c.drawString(margin, page_height - margin - 80 - (i * 16), line)
+        c.drawString(margin, y_start - (i * 16), line)
 
-    instruction_block_height = margin + 80 + len(instructions) * 16 + 20
-    max_preview_height = (page_height - instruction_block_height - margin)
-    max_preview_width = page_width - 2 * margin
-    cell_size = min(max_preview_width / width, max_preview_height / height)
+    instructions_bottom = y_start - (len(instructions) * 16) - 20
+    grid_area_height = instructions_bottom - margin
+    grid_area_width = page_width - 2 * margin
+    cell_size = min(grid_area_width / width, grid_area_height / height)
 
+    from_page_bottom = margin
     draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors,
                       margin, 1.5, 2.0, ghost=False)
     c.showPage()
