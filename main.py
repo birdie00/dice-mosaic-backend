@@ -167,46 +167,37 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(left_x, left_y - 50 - (i * 14), line)
 
-    # Dice count with color key (top-right)
+    # Dice counts (right side)
     dice_counts = {i: 0 for i in range(7)}
     for row in grid:
         for val in row:
             dice_counts[val] += 1
 
-    key_x = page_width / 2 + 20  # right half
-    key_y = page_height - margin - 80
-    box_size = 12
-    line_height = 16
-
+    right_x = page_width / 2 + 40
+    right_y = page_height - margin - 40
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(key_x, key_y, "Key")
-
+    c.drawString(right_x, right_y, "Key")
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(key_x, key_y - line_height, "Colour")
-    c.drawString(key_x + 60, key_y - line_height, "Dice")
-    c.drawString(key_x + 110, key_y - line_height, "Count")
+    c.drawString(right_x, right_y - 16, "Colour")
+    c.drawString(right_x + 60, right_y - 16, "Dice")
+    c.drawString(right_x + 110, right_y - 16, "Count")
 
-    dice_labels = [
-        ("Black", (0, 0, 0)),
-        ("Red", (255, 0, 0)),
-        ("Blue", (0, 0, 255)),
-        ("Orange", (255, 165, 0)),
-        ("Green", (0, 128, 0)),
-        ("Yellow", (255, 255, 0)),
-        ("White", (255, 255, 255)),
-    ]
+    color_rgb = {
+        0: (0, 0, 0), 1: (255, 0, 0), 2: (0, 0, 255), 3: (255, 165, 0),
+        4: (0, 128, 0), 5: (255, 255, 0), 6: (255, 255, 255)
+    }
 
     c.setFont("Helvetica", 10)
-    for i, (label, rgb) in enumerate(dice_labels):
-        y = key_y - ((i + 2) * line_height)
-        r, g, b = rgb
+    for i in range(7):
+        y = right_y - 32 - (i * 14)
+        r, g, b = color_rgb[i]
         c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(key_x, y, box_size, box_size, fill=1, stroke=1)
+        c.rect(right_x, y, 20, 10, fill=1, stroke=1)
 
+        c.setFillColor(black if i not in [0, 6] else white)
+        c.drawString(right_x + 25, y, f"{i} face")
         c.setFillColor(black)
-        c.drawString(key_x + 20, y + 1, label)
-        c.drawString(key_x + 60, y + 1, f"{i} face")
-        c.drawString(key_x + 110, y + 1, str(dice_counts[i]))
+        c.drawString(right_x + 75, y, str(dice_counts[i]))
 
     # Grid Preview (bottom half)
     preview_top = page_height / 2
