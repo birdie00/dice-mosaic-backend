@@ -8,7 +8,7 @@ from uuid import uuid4
 from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, portrait, letter
-from reportlab.lib.colors import black, white
+from reportlab.lib.colors import black, white, gray, red, lightgrey
 import numpy as np
 import os
 import cv2
@@ -31,7 +31,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 class GridRequest(BaseModel):
     grid_data: List[List[int]]
     style_id: int
-    project_name: str  # ✅ add this line
+    project_name: str
 
 
 def apply_enhancements(pil_img, brightness, contrast, sharpness, gamma=1.0, clahe=False):
@@ -77,19 +77,10 @@ async def analyze_image(
     return JSONResponse(content={"styles": styles})
 
 
-# This file defines only the PDF generation logic.
-# Your FastAPI server must import and call `generate_better_dice_pdf()`
-# from another file (like main.py) where `app = FastAPI()` is declared.
-
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, landscape, portrait
-from reportlab.lib.colors import black, white, gray, red, lightgrey
-import os
-
-
 def draw_section_preview(c, full_width, full_height, view_x, view_y, view_w, view_h, x_offset, y_offset):
-    preview_w = 80
-    preview_h = 80 * full_height / full_width
+    preview_text_height = 40
+    preview_h = preview_text_height
+    preview_w = preview_h * full_width / full_height
     cell_size_w = preview_w / full_width
     cell_size_h = preview_h / full_height
     top_left_x = x_offset
@@ -119,11 +110,9 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
             r, g, b, text_color = colors[val]
             px = grid_left + x * cell_size
             py = grid_top - y * cell_size
-
             is_ghost_cell = ghost and (x == width - 1 or y == height - 1)
             c.setFillColor(gray if is_ghost_cell else (r / 255, g / 255, b / 255))
             c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
-
             c.setFillColor(gray if is_ghost_cell else text_color)
             c.setFont("Helvetica", number_font_size + 2)
             c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - ((number_font_size + 2) / 2) * 0.3, str(val))
@@ -161,8 +150,8 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     c = canvas.Canvas(filepath, pagesize=pagesize)
     page_width, page_height = pagesize
-
     margin = 40
+
     colors = {
         0: (0, 0, 0, white),
         1: (255, 0, 0, white),
@@ -173,7 +162,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (255, 255, 255, black),
     }
 
-    # Page 1: Full Map Overview
+    # Page 1
     c.setFont("Helvetica-Bold", 22)
     c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
     c.setFont("Helvetica", 12)
@@ -191,7 +180,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(margin, page_height - margin - 80 - (i * 16), line)
 
-    # Constrain preview to fixed height container (e.g., max 60% of page height)
     instruction_block_height = margin + 80 + len(instructions) * 16 + 20
     max_preview_height = (page_height - instruction_block_height - margin)
     max_preview_width = page_width - 2 * margin
@@ -201,6 +189,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                       margin, 1.5, 2.0, ghost=False)
     c.showPage()
 
+    # Quadrants
     mid_x = width // 2
     mid_y = height // 2
     quadrants = [
@@ -210,41 +199,34 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         ("Bottom Right", mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),
     ]
 
-        for quadrant_name, start_x, start_y, quad_width, quad_height in quadrants:
-    c.setPageSize(pagesize)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(margin, page_height - margin, f"Project: {project_name}")
-    c.setFont("Helvetica", 14)
-    c.drawString(margin, page_height - margin - 20, f"Quadrant: {quadrant_name}")
+    for quadrant_name, start_x, start_y, quad_width, quad_height in quadrants:
+        c.setPageSize(pagesize)
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(margin, page_height - margin, f"Project: {project_name}")
+        c.setFont("Helvetica", 14)
+        c.drawString(margin, page_height - margin - 20, f"Quadrant: {quadrant_name}")
 
-    # Shrink quadrant preview to match header height
-    preview_text_height = 40
-    preview_aspect_ratio = height / width
-    preview_h = preview_text_height
-    preview_w = preview_h / preview_aspect_ratio
+        draw_section_preview(
+            c, width, height,
+            start_x, start_y,
+            quad_width, quad_height,
+            page_width - margin - 80,
+            page_height - margin - 10
+        )
 
-    draw_section_preview(
-        c, width, height,
-        start_x, start_y,
-        quad_width, quad_height,
-        page_width - margin - preview_w,
-        page_height - margin - 10
-    )
+        available_height = page_height - (margin + 80)
+        available_width = page_width - 2 * margin
+        cell_size = min(available_width / quad_width, available_height / quad_height)
 
-    available_height = page_height - (margin + 80)
-    available_width = page_width - 2 * margin
-    cell_size = min(available_width / quad_width, available_height / quad_height)
-
-    draw_grid_section(
-        c, grid,
-        start_x, start_y,
-        quad_width, quad_height,
-        cell_size, start_x, start_y,
-        colors, margin, 2.5, 4.5,
-        ghost=True
-    )
-    c.showPage()
-
+        draw_grid_section(
+            c, grid,
+            start_x, start_y,
+            quad_width, quad_height,
+            cell_size, start_x, start_y,
+            colors, margin, 2.5, 4.5,
+            ghost=True
+        )
+        c.showPage()
 
     c.save()
 
@@ -252,7 +234,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 @app.post("/generate-pdf")
 async def generate_dice_map_pdf(grid_data: GridRequest):
     grid = grid_data.grid_data
-    project_name = grid_data.project_name  # Keep this!
+    project_name = grid_data.project_name
     filename = f"dice_map_{uuid4().hex}.pdf"
     filepath = os.path.join("static", filename)
 
