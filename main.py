@@ -8,7 +8,7 @@ from uuid import uuid4
 from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, portrait, letter
-from reportlab.lib.colors import black, white, gray, red, lightgrey
+from reportlab.lib.colors import black, white, gray, red, lightgrey, blue, yellow, green, orange
 import numpy as np
 import os
 import cv2
@@ -137,18 +137,23 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         0: (0, 0, 0, white),
         1: (255, 0, 0, white),
         2: (0, 0, 255, white),
-        3: (0, 128, 0, white),
-        4: (255, 165, 0, black),
+        3: (255, 165, 0, black),
+        4: (0, 128, 0, white),
         5: (255, 255, 0, black),
         6: (255, 255, 255, black),
     }
 
-    # Page 1 Header
+    # Page 1: Top Half
     c.setFont("Helvetica-Bold", 22)
-    c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
+    title = "Pipcasso Dice Map"
+    title_width = c.stringWidth(title, "Helvetica-Bold", 22)
+    c.drawString((page_width - title_width) / 2, page_height - margin, title)
+
+    left_x = margin
+    left_y = page_height - margin - 40
     c.setFont("Helvetica", 12)
-    c.drawString(margin, page_height - margin - 30, f"Project Name: {project_name}")
-    c.drawString(margin, page_height - margin - 50, f"Grid Size: {width} x {height}")
+    c.drawString(left_x, left_y, f"Project Name: {project_name}")
+    c.drawString(left_x, left_y - 20, f"Grid Size: {width} x {height}")
 
     instructions = [
         "Instructions:",
@@ -158,33 +163,92 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         "3. Use quadrant pages to place dice in sections.",
         "4. Ghosted rows/columns help you align your sections correctly.",
     ]
-
     c.setFont("Helvetica", 10)
-    y_start = page_height - margin - 80
     for i, line in enumerate(instructions):
-        c.drawString(margin, y_start - (i * 16), line)
+        c.drawString(left_x, left_y - 50 - (i * 14), line)
 
+    # Dice count with color key (top-right)
     dice_counts = {i: 0 for i in range(7)}
     for row in grid:
         for val in row:
             dice_counts[val] += 1
 
-    y_dice = y_start - (len(instructions) * 16) - 20
+    key_x = page_width / 2 + 20  # right half
+    key_y = page_height - margin - 80
+    box_size = 12
+    line_height = 16
+
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(key_x, key_y, "Key")
+
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(margin, y_dice, "Dice Count:")
+    c.drawString(key_x, key_y - line_height, "Colour")
+    c.drawString(key_x + 60, key_y - line_height, "Dice")
+    c.drawString(key_x + 110, key_y - line_height, "Count")
+
+    dice_labels = [
+        ("Black", (0, 0, 0)),
+        ("Red", (255, 0, 0)),
+        ("Blue", (0, 0, 255)),
+        ("Orange", (255, 165, 0)),
+        ("Green", (0, 128, 0)),
+        ("Yellow", (255, 255, 0)),
+        ("White", (255, 255, 255)),
+    ]
+
+    c.setFont("Helvetica", 10)
+    for i, (label, rgb) in enumerate(dice_labels):
+        y = key_y - ((i + 2) * line_height)
+        r, g, b = rgb
+        c.setFillColorRGB(r / 255, g / 255, b / 255)
+        c.rect(key_x, y, box_size, box_size, fill=1, stroke=1)
+
+        c.setFillColor(black)
+        c.drawString(key_x + 20, y + 1, label)
+        c.drawString(key_x + 60, y + 1, f"{i} face")
+        c.drawString(key_x + 110, y + 1, str(dice_counts[i]))
+
+    # Dice counts (right side)
+    dice_counts = {i: 0 for i in range(7)}
+    for row in grid:
+        for val in row:
+            dice_counts[val] += 1
+
+    right_x = page_width / 2 + 40
+    right_y = page_height - margin - 40
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(right_x, right_y, "Key")
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(right_x, right_y - 16, "Colour")
+    c.drawString(right_x + 60, right_y - 16, "Dice")
+    c.drawString(right_x + 110, right_y - 16, "Count")
+
+    color_rgb = {
+        0: (0, 0, 0), 1: (255, 0, 0), 2: (0, 0, 255), 3: (255, 165, 0),
+        4: (0, 128, 0), 5: (255, 255, 0), 6: (255, 255, 255)
+    }
+
     c.setFont("Helvetica", 10)
     for i in range(7):
-        c.drawString(margin + 20, y_dice - ((i + 1) * 14), f"{i}: {dice_counts[i]}")
+        y = right_y - 32 - (i * 14)
+        r, g, b = color_rgb[i]
+        c.setFillColorRGB(r / 255, g / 255, b / 255)
+        c.rect(right_x, y, 20, 10, fill=1, stroke=1)
 
+        c.setFillColor(black if i not in [0, 6] else white)
+        c.drawString(right_x + 25, y, f"{i} face")
+        c.setFillColor(black)
+        c.drawString(right_x + 75, y, str(dice_counts[i]))
+
+    # Grid Preview (bottom half)
     preview_top = page_height / 2
     preview_height = page_height / 2 - margin
     preview_width = page_width - 2 * margin
     cell_size = min(preview_width / width, preview_height / height)
-
-    draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors,
-                      margin, 1.5, 2.0, ghost=False)
+    draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors, margin, 1.5, 2.0, ghost=False)
     c.showPage()
 
+    # Quadrants
     mid_x = width // 2
     mid_y = height // 2
     quadrants = [
