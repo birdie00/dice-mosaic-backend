@@ -143,13 +143,11 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (255, 255, 255, black),
     }
 
-    # Page 1: Top Half
     c.setFont("Helvetica-Bold", 22)
     title = "Pipcasso Dice Map"
     title_width = c.stringWidth(title, "Helvetica-Bold", 22)
     c.drawString((page_width - title_width) / 2, page_height - margin, title)
 
-    # Project details and instructions (left)
     left_x = margin
     left_y = page_height - margin - 40
     c.setFont("Helvetica", 12)
@@ -168,7 +166,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(left_x, left_y - 50 - (i * 14), line)
 
-    # Dice counts (right side key)
     dice_counts = {i: 0 for i in range(7)}
     for row in grid:
         for val in row:
@@ -177,25 +174,24 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     right_x = page_width / 2 + 40
     right_y = page_height - margin - 40
     c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(black)
     c.drawString(right_x, right_y, "Key")
     c.setFont("Helvetica-Bold", 10)
     c.drawString(right_x, right_y - 16, "Colour")
     c.drawString(right_x + 60, right_y - 16, "Dice")
-    c.drawString(right_x + 110, right_y - 16, "Count")
+    c.drawString(right_x + 120, right_y - 16, "Count")
 
     c.setFont("Helvetica", 10)
     for i in range(7):
         y = right_y - 32 - (i * 14)
-        r, g, b, text_color = colors[i]
+        r, g, b, _ = colors[i]
         c.setFillColorRGB(r / 255, g / 255, b / 255)
         c.rect(right_x, y, 20, 10, fill=1, stroke=1)
 
-        c.setFillColor(text_color)
-        c.drawString(right_x + 25, y, f"{i} face")
         c.setFillColor(black)
-        c.drawString(right_x + 75, y, str(dice_counts[i]))
+        c.drawString(right_x + 30, y, f"{i} face")
+        c.drawString(right_x + 120, y, str(dice_counts[i]))
 
-    # Grid Preview (bottom half)
     preview_height = page_height / 2 - margin
     preview_width = page_width - 2 * margin
     cell_size = min(preview_width / width, preview_height / height)
@@ -208,7 +204,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.restoreState()
     c.showPage()
 
-    # Quadrants
     mid_x = width // 2
     mid_y = height // 2
     quadrants = [
