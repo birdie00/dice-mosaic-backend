@@ -84,7 +84,6 @@ import os
 
 
 def draw_section_preview(c, full_width, full_height, view_x, view_y, view_w, view_h, x_offset, y_offset):
-    """Draws a small map showing the full grid with a highlighted box for the current quadrant."""
     preview_w = 80
     preview_h = 80 * full_height / full_width
     cell_size_w = preview_w / full_width
@@ -108,7 +107,7 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
     grid_total_width = cell_size * width
     grid_total_height = cell_size * height
     grid_left = (page_width - grid_total_width) / 2
-    grid_top = (page_height + grid_total_height) / 2 - 40  # shift down for header
+    grid_top = (page_height + grid_total_height) / 2 - 40
 
     for y in range(height):
         for x in range(width):
@@ -117,28 +116,22 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
             px = grid_left + x * cell_size
             py = grid_top - y * cell_size
 
-            if ghost and (x == width - 1 or y == height - 1):
-                c.setFillColor(gray)
-            else:
-                c.setFillColorRGB(r / 255, g / 255, b / 255)
-
+            is_ghost_cell = ghost and (x == width - 1 or y == height - 1)
+            c.setFillColor(gray if is_ghost_cell else (r / 255, g / 255, b / 255))
             c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
 
-            if ghost and (x == width - 1 or y == height - 1):
-                c.setFillColor(gray)
-            else:
-                c.setFillColor(text_color)
-            c.setFont("Helvetica", number_font_size)
-            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (number_font_size / 2) * 0.3, str(val))
+            c.setFillColor(gray if is_ghost_cell else text_color)
+            c.setFont("Helvetica", number_font_size + 1.5)
+            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - ((number_font_size + 1.5) / 2) * 0.3, str(val))
 
     for x in range(width):
         label = f"C{start_x + x + 1}"
         px = grid_left + x * cell_size
         py = grid_top + cell_size
         c.setFillColor(white)
-        c.setStrokeColor(black)
+        c.setStrokeColor(gray if ghost and x == width - 1 else black)
         c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(black)
+        c.setFillColor(gray if ghost and x == width - 1 else black)
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
@@ -147,12 +140,11 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
         px = grid_left - cell_size
         py = grid_top - y * cell_size
         c.setFillColor(white)
-        c.setStrokeColor(black)
+        c.setStrokeColor(gray if ghost and y == height - 1 else black)
         c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(black)
+        c.setFillColor(gray if ghost and y == height - 1 else black)
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
-
 
 
 def generate_better_dice_pdf(filepath, grid, project_name):
@@ -193,7 +185,8 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(margin, page_height - margin - 80 - (i * 16), line)
 
-    available_height = page_height - (margin + 80 + len(instructions) * 16) - margin
+    top_of_grid = page_height - margin - 80 - (len(instructions) * 16) - 20
+    available_height = top_of_grid - margin
     available_width = page_width - 2 * margin
     cell_size = min(available_width / width, available_height / height)
 
@@ -201,7 +194,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                       margin, 1.5, 2.0, ghost=False)
     c.showPage()
 
-    # Quadrants with label
     mid_x = width // 2
     mid_y = height // 2
     quadrants = [
@@ -235,13 +227,12 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             start_x, start_y,
             quad_width, quad_height,
             cell_size, start_x, start_y,
-            colors, margin, 2.5, 4.0,
+            colors, margin, 2.5, 4.5,
             ghost=True
         )
         c.showPage()
 
     c.save()
-
 
 @app.post("/generate-pdf")
 async def generate_dice_map_pdf(grid_data: GridRequest):
