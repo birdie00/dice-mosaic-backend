@@ -225,9 +225,10 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             page_height - margin - 20
         )
 
-        available_height = page_height - (margin + 80)
-        available_width = page_width - 2 * margin
-        cell_size = min(available_width / quad_width, available_height / quad_height)
+# Shrink preview area slightly to avoid overlapping instructions
+max_preview_height = page_height * 0.5  # was too tall before
+max_preview_width = page_width - 2 * margin
+cell_size = min(max_preview_width / width, max_preview_height / height)
 
         draw_grid_section(
             c, grid,
