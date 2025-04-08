@@ -42,17 +42,18 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
             c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
 
             c.setFillColor(gray if is_ghost_cell else text_color)
-            c.setFont("Helvetica", number_font_size + 1.5)
-            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - ((number_font_size + 1.5) / 2) * 0.3, str(val))
+            c.setFont("Helvetica", number_font_size + 2)
+            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - ((number_font_size + 2) / 2) * 0.3, str(val))
 
     for x in range(width):
         label = f"C{start_x + x + 1}"
         px = grid_left + x * cell_size
         py = grid_top + cell_size
+        is_ghost_label = ghost and x == width - 1
         c.setFillColor(white)
-        c.setStrokeColor(gray if ghost and x == width - 1 else black)
+        c.setStrokeColor(gray if is_ghost_label else black)
         c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(gray if ghost and x == width - 1 else black)
+        c.setFillColor(gray if is_ghost_label else black)
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
@@ -60,10 +61,11 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
         label = f"R{start_y + y + 1}"
         px = grid_left - cell_size
         py = grid_top - y * cell_size
+        is_ghost_label = ghost and y == height - 1
         c.setFillColor(white)
-        c.setStrokeColor(gray if ghost and y == height - 1 else black)
+        c.setStrokeColor(gray if is_ghost_label else black)
         c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(gray if ghost and y == height - 1 else black)
+        c.setFillColor(gray if is_ghost_label else black)
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
