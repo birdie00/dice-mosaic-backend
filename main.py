@@ -208,38 +208,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.drawString(key_x + 60, y + 1, f"{i} face")
         c.drawString(key_x + 110, y + 1, str(dice_counts[i]))
 
-    # Dice counts (right side)
-    dice_counts = {i: 0 for i in range(7)}
-    for row in grid:
-        for val in row:
-            dice_counts[val] += 1
-
-    right_x = page_width / 2 + 40
-    right_y = page_height - margin - 40
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(right_x, right_y, "Key")
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(right_x, right_y - 16, "Colour")
-    c.drawString(right_x + 60, right_y - 16, "Dice")
-    c.drawString(right_x + 110, right_y - 16, "Count")
-
-    color_rgb = {
-        0: (0, 0, 0), 1: (255, 0, 0), 2: (0, 0, 255), 3: (255, 165, 0),
-        4: (0, 128, 0), 5: (255, 255, 0), 6: (255, 255, 255)
-    }
-
-    c.setFont("Helvetica", 10)
-    for i in range(7):
-        y = right_y - 32 - (i * 14)
-        r, g, b = color_rgb[i]
-        c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(right_x, y, 20, 10, fill=1, stroke=1)
-
-        c.setFillColor(black if i not in [0, 6] else white)
-        c.drawString(right_x + 25, y, f"{i} face")
-        c.setFillColor(black)
-        c.drawString(right_x + 75, y, str(dice_counts[i]))
-
     # Grid Preview (bottom half)
     preview_top = page_height / 2
     preview_height = page_height / 2 - margin
