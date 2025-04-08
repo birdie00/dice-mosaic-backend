@@ -143,7 +143,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (255, 255, 255, black),
     }
 
-   # Page 1: Top Half - Text and Dice Counts
+    # Page 1 Header
     c.setFont("Helvetica-Bold", 22)
     c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
     c.setFont("Helvetica", 12)
@@ -151,24 +151,23 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.drawString(margin, page_height - margin - 50, f"Grid Size: {width} x {height}")
 
     instructions = [
-    "Instructions:",
-    "1. Each number in the grid represents a dice face (0–6).",
-    "2. Dice color is determined by number:",
-    "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
-    "3. Use quadrant pages to place dice in sections.",
-    "4. Ghosted rows/columns help you align your sections correctly.",
-]
+        "Instructions:",
+        "1. Each number in the grid represents a dice face (0–6).",
+        "2. Dice color is determined by number:",
+        "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
+        "3. Use quadrant pages to place dice in sections.",
+        "4. Ghosted rows/columns help you align your sections correctly.",
+    ]
 
     c.setFont("Helvetica", 10)
     y_start = page_height - margin - 80
     for i, line in enumerate(instructions):
         c.drawString(margin, y_start - (i * 16), line)
 
-    # Dice count
     dice_counts = {i: 0 for i in range(7)}
     for row in grid:
-    for val in row:
-        dice_counts[val] += 1
+        for val in row:
+            dice_counts[val] += 1
 
     y_dice = y_start - (len(instructions) * 16) - 20
     c.setFont("Helvetica-Bold", 10)
@@ -177,18 +176,15 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i in range(7):
         c.drawString(margin + 20, y_dice - ((i + 1) * 14), f"{i}: {dice_counts[i]}")
 
-    # Bottom half grid preview
     preview_top = page_height / 2
     preview_height = page_height / 2 - margin
     preview_width = page_width - 2 * margin
     cell_size = min(preview_width / width, preview_height / height)
 
     draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors,
-                  margin, 1.5, 2.0, ghost=False)
+                      margin, 1.5, 2.0, ghost=False)
     c.showPage()
 
-
-    # Quadrants
     mid_x = width // 2
     mid_y = height // 2
     quadrants = [
@@ -204,7 +200,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.drawString(margin, page_height - margin, f"Project: {project_name}")
         c.setFont("Helvetica", 14)
         c.drawString(margin, page_height - margin - 20, f"Quadrant: {quadrant_name}")
-
 
         available_height = page_height - (margin + 80)
         available_width = page_width - 2 * margin
