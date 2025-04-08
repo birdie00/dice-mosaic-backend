@@ -162,31 +162,36 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (255, 255, 255, black),
     }
 
-    # Page 1
-    c.setFont("Helvetica-Bold", 22)
-    c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
-    c.setFont("Helvetica", 12)
-    c.drawString(margin, page_height - margin - 30, f"Project Name: {project_name}")
-    c.drawString(margin, page_height - margin - 50, f"Grid Size: {width} x {height}")
-    instructions = [
-        "Instructions:",
-        "1. Each number in the grid represents a dice face (0–6).",
-        "2. Dice color is determined by number:",
-        "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
-        "3. Use quadrant pages to place dice in sections.",
-        "4. Ghosted rows/columns help you align your sections correctly.",
-    ]
-    c.setFont("Helvetica", 10)
-    for i, line in enumerate(instructions):
-        c.drawString(margin, page_height - margin - 80 - (i * 16), line)
+   # Page 1
+c.setFont("Helvetica-Bold", 22)
+c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
+c.setFont("Helvetica", 12)
+c.drawString(margin, page_height - margin - 30, f"Project Name: {project_name}")
+c.drawString(margin, page_height - margin - 50, f"Grid Size: {width} x {height}")
+instructions = [
+    "Instructions:",
+    "1. Each number in the grid represents a dice face (0–6).",
+    "2. Dice color is determined by number:",
+    "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
+    "3. Use quadrant pages to place dice in sections.",
+    "4. Ghosted rows/columns help you align your sections correctly.",
+]
+c.setFont("Helvetica", 10)
+for i, line in enumerate(instructions):
+    c.drawString(margin, page_height - margin - 80 - (i * 16), line)
 
-    instruction_block_height = margin + 80 + len(instructions) * 16 + 20
-    max_preview_height = (page_height - instruction_block_height - margin)
-    max_preview_width = page_width - 2 * margin
-    cell_size = min(max_preview_width / width, max_preview_height / height)
+instruction_block_height = 80 + len(instructions) * 16 + 60  # increased padding
+preview_top = page_height - margin - instruction_block_height
+preview_available_height = preview_top - margin
+preview_available_width = page_width - 2 * margin
+cell_size = min(preview_available_width / width, preview_available_height / height)
 
-    draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors,
-                      margin, 1.5, 2.0, ghost=False)
+draw_grid_section(
+    c, grid, 0, 0, width, height,
+    cell_size, 0, 0, colors,
+    margin, 1.5, 2.0, ghost=False
+)
+
     c.showPage()
 
     # Quadrants
