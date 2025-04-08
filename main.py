@@ -210,7 +210,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         ("Bottom Right", mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),
     ]
 
-    for quadrant_name, start_x, start_y, quad_width, quad_height in quadrants:
+        for quadrant_name, start_x, start_y, quad_width, quad_height in quadrants:
     c.setPageSize(pagesize)
     c.setFont("Helvetica-Bold", 16)
     c.drawString(margin, page_height - margin, f"Project: {project_name}")
