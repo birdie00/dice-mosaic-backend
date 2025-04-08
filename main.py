@@ -77,25 +77,6 @@ async def analyze_image(
     return JSONResponse(content={"styles": styles})
 
 
-def draw_section_preview(c, full_width, full_height, view_x, view_y, view_w, view_h, x_offset, y_offset):
-    preview_text_height = 40
-    preview_h = preview_text_height
-    preview_w = preview_h * full_width / full_height
-    cell_size_w = preview_w / full_width
-    cell_size_h = preview_h / full_height
-    top_left_x = x_offset
-    top_left_y = y_offset - preview_h
-
-    c.setStrokeColor(lightgrey)
-    c.setFillColor(lightgrey)
-    c.rect(top_left_x, top_left_y, preview_w, preview_h, fill=1)
-
-    c.setStrokeColor(red)
-    highlight_x = top_left_x + view_x * cell_size_w
-    highlight_y = top_left_y + (full_height - view_y - view_h) * cell_size_h
-    c.rect(highlight_x, highlight_y, view_w * cell_size_w, view_h * cell_size_h, fill=0, stroke=1)
-
-
 def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, global_offset_x, global_offset_y,
                       colors, margin, label_font_size, number_font_size, ghost=False):
     page_width, page_height = c._pagesize
@@ -162,32 +143,50 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (255, 255, 255, black),
     }
 
-    # Page 1
+   # Page 1: Top Half - Text and Dice Counts
     c.setFont("Helvetica-Bold", 22)
     c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
     c.setFont("Helvetica", 12)
     c.drawString(margin, page_height - margin - 30, f"Project Name: {project_name}")
     c.drawString(margin, page_height - margin - 50, f"Grid Size: {width} x {height}")
-    instructions = [
-        "Instructions:",
-        "1. Each number in the grid represents a dice face (0–6).",
-        "2. Dice color is determined by number:",
-        "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
-        "3. Use quadrant pages to place dice in sections.",
-        "4. Ghosted rows/columns help you align your sections correctly.",
-    ]
-    c.setFont("Helvetica", 10)
-    for i, line in enumerate(instructions):
-        c.drawString(margin, page_height - margin - 80 - (i * 16), line)
 
-    instruction_block_height = margin + 80 + len(instructions) * 16 + 20
-    max_preview_height = (page_height - instruction_block_height - margin)
-    max_preview_width = page_width - 2 * margin
-    cell_size = min(max_preview_width / width, max_preview_height / height)
+    instructions = [
+    "Instructions:",
+    "1. Each number in the grid represents a dice face (0–6).",
+    "2. Dice color is determined by number:",
+    "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
+    "3. Use quadrant pages to place dice in sections.",
+    "4. Ghosted rows/columns help you align your sections correctly.",
+]
+
+    c.setFont("Helvetica", 10)
+    y_start = page_height - margin - 80
+    for i, line in enumerate(instructions):
+    c.drawString(margin, y_start - (i * 16), line)
+
+    # Dice count
+    dice_counts = {i: 0 for i in range(7)}
+    for row in grid:
+    for val in row:
+        dice_counts[val] += 1
+
+    y_dice = y_start - (len(instructions) * 16) - 20
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(margin, y_dice, "Dice Count:")
+    c.setFont("Helvetica", 10)
+    for i in range(7):
+    c.drawString(margin + 20, y_dice - ((i + 1) * 14), f"{i}: {dice_counts[i]}")
+
+    # Bottom half grid preview
+    preview_top = page_height / 2
+    preview_height = page_height / 2 - margin
+    preview_width = page_width - 2 * margin
+    cell_size = min(preview_width / width, preview_height / height)
 
     draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors,
-                      margin, 1.5, 2.0, ghost=False)
+                  margin, 1.5, 2.0, ghost=False)
     c.showPage()
+
 
     # Quadrants
     mid_x = width // 2
@@ -206,13 +205,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.setFont("Helvetica", 14)
         c.drawString(margin, page_height - margin - 20, f"Quadrant: {quadrant_name}")
 
-        draw_section_preview(
-            c, width, height,
-            start_x, start_y,
-            quad_width, quad_height,
-            page_width - margin - 80,
-            page_height - margin - 10
-        )
 
         available_height = page_height - (margin + 80)
         available_width = page_width - 2 * margin
