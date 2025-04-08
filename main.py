@@ -1,3 +1,7 @@
+# This file defines only the PDF generation logic.
+# Your FastAPI server must import and call `generate_better_dice_pdf()`
+# from another file (like main.py) where `app = FastAPI()` is declared.
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape, portrait
 from reportlab.lib.colors import black, white, gray, red, lightgrey
