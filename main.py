@@ -97,7 +97,6 @@ def draw_section_preview(c, full_width, full_height, view_x, view_y, view_w, vie
     c.rect(top_left_x, top_left_y, preview_w, preview_h, fill=1)
 
     c.setStrokeColor(red)
-    c.setFillColor(None)
     highlight_x = top_left_x + view_x * cell_size_w
     highlight_y = top_left_y + (full_height - view_y - view_h) * cell_size_h
     c.rect(highlight_x, highlight_y, view_w * cell_size_w, view_h * cell_size_h, fill=0, stroke=1)
