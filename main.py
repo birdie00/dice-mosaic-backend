@@ -191,10 +191,11 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(margin, page_height - margin - 80 - (i * 16), line)
 
-    top_of_grid = page_height - margin - 80 - (len(instructions) * 16) - 20
-    available_height = top_of_grid - margin
-    available_width = page_width - 2 * margin
-    cell_size = min(available_width / width, available_height / height)
+    # Constrain preview to fixed height container (e.g., max 60% of page height)
+    instruction_block_height = margin + 80 + len(instructions) * 16 + 20
+    max_preview_height = (page_height - instruction_block_height - margin)
+    max_preview_width = page_width - 2 * margin
+    cell_size = min(max_preview_width / width, max_preview_height / height)
 
     draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors,
                       margin, 1.5, 2.0, ghost=False)
