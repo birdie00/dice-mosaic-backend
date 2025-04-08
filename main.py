@@ -217,20 +217,19 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.setFont("Helvetica", 14)
     c.drawString(margin, page_height - margin - 20, f"Quadrant: {quadrant_name}")
 
-    # Set preview height to match the height of header text block (~40 units)
-preview_text_height = 40  # Matches height used by header (title + quadrant)
-preview_aspect_ratio = full_height / full_width
-preview_h = preview_text_height
-preview_w = preview_h / preview_aspect_ratio
+    # Shrink quadrant preview to match header height
+    preview_text_height = 40
+    preview_aspect_ratio = height / width
+    preview_h = preview_text_height
+    preview_w = preview_h / preview_aspect_ratio
 
-draw_section_preview(
-    c, width, height,
-    start_x, start_y,
-    quad_width, quad_height,
-    page_width - margin - preview_w,
-    page_height - margin - 10  # slight vertical pad
-)
-
+    draw_section_preview(
+        c, width, height,
+        start_x, start_y,
+        quad_width, quad_height,
+        page_width - margin - preview_w,
+        page_height - margin - 10
+    )
 
     available_height = page_height - (margin + 80)
     available_width = page_width - 2 * margin
