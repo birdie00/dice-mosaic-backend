@@ -162,7 +162,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.setFont("Helvetica", 10)
     y_start = page_height - margin - 80
     for i, line in enumerate(instructions):
-    c.drawString(margin, y_start - (i * 16), line)
+        c.drawString(margin, y_start - (i * 16), line)
 
     # Dice count
     dice_counts = {i: 0 for i in range(7)}
@@ -175,7 +175,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.drawString(margin, y_dice, "Dice Count:")
     c.setFont("Helvetica", 10)
     for i in range(7):
-    c.drawString(margin + 20, y_dice - ((i + 1) * 14), f"{i}: {dice_counts[i]}")
+        c.drawString(margin + 20, y_dice - ((i + 1) * 14), f"{i}: {dice_counts[i]}")
 
     # Bottom half grid preview
     preview_top = page_height / 2
