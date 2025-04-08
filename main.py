@@ -204,7 +204,15 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     preview_height = page_height / 2 - margin
     preview_width = page_width - 2 * margin
     cell_size = min(preview_width / width, preview_height / height)
+    # Compute top position for vertically centering in bottom half
+    grid_height_in_points = cell_size * height
+    grid_y_center = (page_height / 2 - grid_height_in_points) / 2
+
+    # Use translate to shift the grid down
+    c.saveState()
+    c.translate(0, grid_y_center)
     draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors, margin, 1.5, 2.0, ghost=False)
+    c.restoreState()
     c.showPage()
 
     # Quadrants
