@@ -77,25 +77,81 @@ async def analyze_image(
     return JSONResponse(content={"styles": styles})
 
 
-@app.post("/generate-pdf")
-async def generate_dice_map_pdf(grid_data: GridRequest):
-    grid = grid_data.grid_data
-    style_id = grid_data.style_id
-    project_name = grid_data.project_name  # ✅ extract project name
-    filename = f"dice_map_{uuid4().hex}.pdf"
-    filepath = os.path.join("static", filename)
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, landscape, portrait
+from reportlab.lib.colors import black, white, gray
+import os
 
+
+def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, global_offset_x, global_offset_y,
+                      colors, margin, label_font_size, number_font_size, ghost=False):
+    """
+    Draws a section of the grid starting at (start_x, start_y) with the given width and height.
+    global_offset_* are used to label rows/cols with respect to the full grid.
+    """
+    page_width, page_height = c._pagesize
+    grid_total_width = cell_size * width
+    grid_total_height = cell_size * height
+    grid_left = (page_width - grid_total_width) / 2
+    grid_top = (page_height + grid_total_height) / 2
+
+    for y in range(height):
+        for x in range(width):
+            val = grid[start_y + y][start_x + x]
+            r, g, b, text_color = colors[val]
+            px = grid_left + x * cell_size
+            py = grid_top - y * cell_size
+
+            if ghost and (x == width - 1 or y == height - 1):
+                c.setFillColor(gray)
+            else:
+                c.setFillColorRGB(r / 255, g / 255, b / 255)
+
+            c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
+
+            if ghost and (x == width - 1 or y == height - 1):
+                c.setFillColor(gray)
+            else:
+                c.setFillColor(text_color)
+            c.setFont("Helvetica", number_font_size)
+            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (number_font_size / 2) * 0.3, str(val))
+
+    # Row/Col Labels
+    for x in range(width):
+        label = f"C{start_x + x + 1}"
+        px = grid_left + x * cell_size
+        py = grid_top + cell_size
+        c.setFillColor(white)
+        c.setStrokeColor(black)
+        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+        c.setFillColor(black)
+        c.setFont("Helvetica", label_font_size)
+        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
+
+    for y in range(height):
+        label = f"R{start_y + y + 1}"
+        px = grid_left - cell_size
+        py = grid_top - y * cell_size
+        c.setFillColor(white)
+        c.setStrokeColor(black)
+        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+        c.setFillColor(black)
+        c.setFont("Helvetica", label_font_size)
+        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
+
+
+# This function will be called inside your FastAPI route
+
+def generate_better_dice_pdf(filepath, grid, project_name):
     height = len(grid)
     width = len(grid[0])
     is_portrait = height >= width
     pagesize = portrait(letter) if is_portrait else landscape(letter)
-    page_width, page_height = pagesize
 
     cell_size = 6
     margin = 40
     label_font_size = 2.3
     number_font_size = 3.5
-    thin_border = 0.5
 
     colors = {
         0: (0, 0, 0, white),
@@ -109,7 +165,8 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
     c = canvas.Canvas(filepath, pagesize=pagesize)
 
-    # Page 1
+    # --- Page 1: Overview + Instructions ---
+    page_width, page_height = pagesize
     c.setFont("Helvetica-Bold", 22)
     c.drawString(margin, page_height - margin, "Pipcasso Dice Map")
     c.setFont("Helvetica", 12)
@@ -120,59 +177,51 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
         "1. Each number in the grid represents a dice face (0–6).",
         "2. Dice color is determined by number:",
         "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
-        "3. Match the dice number and position to recreate the image.",
-        "4. Use row (R) and column (C) labels to help place dice accurately.",
+        "3. Use quadrant pages to place dice in sections.",
+        "4. Ghosted rows/columns help you align your sections correctly.",
     ]
     c.setFont("Helvetica", 10)
     for i, line in enumerate(instructions):
         c.drawString(margin, page_height - margin - 80 - (i * 16), line)
+
+    # Mini Grid
+    mini_cell = 1  # small cell size
+    draw_grid_section(c, grid, 0, 0, width, height, mini_cell, 0, 0, colors,
+                      margin, 1.5, 2.0, ghost=False)
     c.showPage()
 
-    # Page 2
-    c.setPageSize(pagesize)
-    grid_total_width = cell_size * width
-    grid_total_height = cell_size * height
-    grid_left = (page_width - grid_total_width) / 2
-    grid_top = (page_height + grid_total_height) / 2
+    # --- Pages 2–5: Quadrants ---
+    mid_x = width // 2
+    mid_y = height // 2
 
-    c.setLineWidth(thin_border)
-    for y, row in enumerate(grid):
-        for x, val in enumerate(row):
-            r, g, b, text_color = colors[val]
-            px = grid_left + x * cell_size
-            py = grid_top - y * cell_size
+    quadrants = [
+        (0, 0, mid_x + 1, mid_y + 1),  # top-left with right/bottom ghost
+        (mid_x - 1, 0, width - mid_x + 1, mid_y + 1),  # top-right with left/bottom ghost
+        (0, mid_y - 1, mid_x + 1, height - mid_y + 1),  # bottom-left with top/right ghost
+        (mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),  # bottom-right with top/left ghost
+    ]
 
-            c.setFillColorRGB(r / 255, g / 255, b / 255)
-            c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
-
-            c.setStrokeColor(white)
-            c.rect(px, py - cell_size, cell_size, cell_size, fill=0, stroke=1)
-
-            c.setFillColor(text_color)
-            c.setFont("Helvetica", number_font_size)
-            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (number_font_size / 2) * 0.3, str(val))
-
-    for x in range(width):
-        label = f"C{x + 1}"
-        px = grid_left + x * cell_size
-        py = grid_top + cell_size
-        c.setFillColor(white)
-        c.setStrokeColor(black)
-        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(black)
-        c.setFont("Helvetica", label_font_size)
-        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
-
-    for y in range(height):
-        label = f"R{y + 1}"
-        px = grid_left - cell_size
-        py = grid_top - y * cell_size
-        c.setFillColor(white)
-        c.setStrokeColor(black)
-        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
-        c.setFillColor(black)
-        c.setFont("Helvetica", label_font_size)
-        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
+    for start_x, start_y, quad_width, quad_height in quadrants:
+        c.setPageSize(pagesize)
+        draw_grid_section(
+            c, grid,
+            start_x, start_y,
+            quad_width, quad_height,
+            cell_size, start_x, start_y,
+            colors, margin, label_font_size, number_font_size,
+            ghost=True
+        )
+        c.showPage()
 
     c.save()
+
+@app.post("/generate-pdf")
+async def generate_dice_map_pdf(grid_data: GridRequest):
+    grid = grid_data.grid_data
+    project_name = grid_data.project_name  # Keep this!
+    filename = f"dice_map_{uuid4().hex}.pdf"
+    filepath = os.path.join("static", filename)
+
+    generate_better_dice_pdf(filepath, grid, project_name)
+
     return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
