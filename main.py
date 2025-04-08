@@ -118,8 +118,9 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(margin, y_start - (i * 16), line)
 
-    instructions_bottom = y_start - (len(instructions) * 16) - 20
-    grid_area_height = instructions_bottom - margin
+    instructions_height = (len(instructions) * 16) + 100  # 80 top spacing + 20 buffer
+    grid_start_y = page_height - margin - instructions_height
+    grid_area_height = grid_start_y - margin
     grid_area_width = page_width - 2 * margin
     cell_size = min(grid_area_width / width, grid_area_height / height)
 
