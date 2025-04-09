@@ -172,7 +172,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             dice_counts[val] += 1
 
 
-    # --- Updated Key Section ---
+    # --- Updated Key Section (Centered with Title) ---
     table_x = page_width - margin - 180  # total width ~160
     table_y = page_height - margin - 40
     row_height = 16
@@ -181,6 +181,13 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     num_cols = 3
     table_width = sum(col_widths)
     table_height = row_height * num_rows
+
+    # Title above the key
+    c.setFont("Helvetica-Bold", 12)
+    title_text = "Dice Map Key"
+    title_width = c.stringWidth(title_text, "Helvetica-Bold", 12)
+    c.setFillColor(black)
+    c.drawString(table_x + (table_width - title_width) / 2, table_y + 6, title_text)
 
     # Draw table border
     c.setStrokeColor(black)
@@ -197,31 +204,43 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         x += width
         c.line(x, table_y, x, table_y - table_height)
 
-    # Set font and fill color for headers and rows
+    # Headers centered
     c.setFont("Helvetica-Bold", 10)
     c.setFillColor(black)
 
     headers = ["Color", "Dots (pips)", "Count"]
     x = table_x
     for i, header in enumerate(headers):
-        c.drawString(x + 4, table_y - row_height + 4, header)
+        col_center = x + col_widths[i] / 2
+        text_width = c.stringWidth(header, "Helvetica-Bold", 10)
+        c.drawString(col_center - text_width / 2, table_y - row_height + 4, header)
         x += col_widths[i]
 
+    # Data rows
     c.setFont("Helvetica", 10)
     for i in range(7):
         y = table_y - (i + 2) * row_height + 4
         r, g, b, _ = colors[i]
 
         # Color swatch in first column
-        swatch_x = table_x + 4
+        swatch_x = table_x + 10  # center-ish inside 40 width
         swatch_y = table_y - (i + 2) * row_height + 3
         c.setFillColorRGB(r / 255, g / 255, b / 255)
         c.rect(swatch_x, swatch_y, 20, 10, fill=1, stroke=1)
 
-        # Text: Dots and Count
+        # Center text in columns 2 and 3
+        dots_text = f"{i} face"
+        count_text = str(dice_counts[i])
+
+        dots_center = table_x + col_widths[0] + col_widths[1] / 2
+        count_center = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
+
+        dots_width = c.stringWidth(dots_text, "Helvetica", 10)
+        count_width = c.stringWidth(count_text, "Helvetica", 10)
+
         c.setFillColor(black)
-        c.drawString(table_x + col_widths[0] + 4, y, f"{i} face")
-        c.drawString(table_x + col_widths[0] + col_widths[1] + 4, y, str(dice_counts[i]))
+        c.drawString(dots_center - dots_width / 2, y, dots_text)
+        c.drawString(count_center - count_width / 2, y, count_text)
 
 
     preview_height = page_height / 2 - margin
