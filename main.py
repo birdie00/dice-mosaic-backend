@@ -58,6 +58,7 @@ async def analyze_image(
     grid_height: int = Form(...),
 ):
     image = Image.open(file.file).convert("L").resize((grid_width, grid_height))
+    image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 
     style_settings = {
         1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
@@ -71,11 +72,18 @@ async def analyze_image(
     styles = []
     for style_id, settings in style_settings.items():
         processed = apply_enhancements(image.copy(), **settings)
+    
+        # Ensure resized correctly to match the intended grid dimensions
+        processed = processed.resize((grid_width, grid_height))
         arr = np.array(processed)
-        grid = [[int(val / 256 * 7) for val in row] for row in arr]
-        styles.append({"style_id": style_id, "grid": grid})
-    return JSONResponse(content={"styles": styles})
 
+        # Final shape check (debug print optional)
+        if arr.shape != (grid_height, grid_width):
+            print(f"Warning: Unexpected shape {arr.shape}, expected ({grid_height}, {grid_width})")
+
+        # Normalize values and build grid
+        grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
+        styles.append({"style_id": style_id, "grid": grid})
 
 def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, global_offset_x, global_offset_y,
                       colors, margin, label_font_size, number_font_size, ghost=False):
