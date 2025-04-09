@@ -57,9 +57,12 @@ async def analyze_image(
     grid_width: int = Form(...),
     grid_height: int = Form(...),
 ):
-    # Open and prepare the image once
+    print(f"[DEBUG] /analyze received: grid_width={grid_width}, grid_height={grid_height}")
+
     original = Image.open(file.file).convert("L")
     base = original.resize((grid_width, grid_height))
+
+    print(f"[DEBUG] Resized image to: {base.size}")  # <-- Confirm actual size
 
     style_settings = {
         1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
@@ -74,14 +77,13 @@ async def analyze_image(
     for style_id, settings in style_settings.items():
         processed = apply_enhancements(base.copy(), **settings)
         arr = np.array(processed)
-
-        if arr.shape != (grid_height, grid_width):
-            print(f"[WARNING] Unexpected array shape: {arr.shape}, expected ({grid_height}, {grid_width})")
+        print(f"[DEBUG] Style {style_id} -> numpy shape: {arr.shape}")  # <-- Check grid shape
 
         grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
         styles.append({"style_id": style_id, "grid": grid})
 
     return JSONResponse(content={"styles": styles})
+
 
 
 
@@ -311,6 +313,9 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 @app.post("/generate-pdf")
 async def generate_dice_map_pdf(grid_data: GridRequest):
     grid = grid_data.grid_data
+    actual_height = len(grid)
+    actual_width = len(grid[0]) if actual_height > 0 else 0
+    print(f"[DEBUG] PDF generation: received grid size = {actual_width} cols x {actual_height} rows")
     project_name = grid_data.project_name
     filename = f"dice_map_{uuid4().hex}.pdf"
     filepath = os.path.join("static", filename)
