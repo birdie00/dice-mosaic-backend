@@ -160,46 +160,53 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         for val in row:
             dice_counts[val] += 1
 
-    # === PAGE 1: INFO PAGE ===
+    mid_x = width // 2
+    mid_y = height // 2
+
+    # === PAGE 1: INFO PAGE WITH MINI GRID OVERVIEW ===
     c.setFont("Helvetica-Bold", 22)
     title = "Pipcasso Dice Map"
-    title_width = c.stringWidth(title, "Helvetica-Bold", 22)
-    c.drawString((page_width - title_width) / 2, page_height - margin, title)
+    c.drawCentredString(page_width / 2, page_height - margin, title)
 
-    info_y = page_height - margin - 40
-    c.setFont("Helvetica", 12)
-    c.drawString(margin, info_y, f"Project Name: {project_name}")
-    c.drawString(margin, info_y - 20, f"Grid Size: {width} x {height}")
+    top_half_height = (page_height - 2 * margin) * 0.45
+    bottom_half_height = (page_height - 2 * margin) * 0.5
+    top_left_x = margin
+    top_right_x = page_width / 2 + 10
+    section_y = page_height - margin - 40
 
-    # Instructions
-    instructions_y = info_y - 60
+    # --- Top Left: Project Info + Instructions ---
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(margin, instructions_y, "Instructions")
-    instructions = [
-        "1. Each number in the grid represents a dice face (0–6).",
-        "2. Dice color is determined by number:",
-        "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
-        "3. The next page shows the full layout of the mosaic, divided into quadrants.",
-        "4. Pages 3–6 show zoomed-in quadrants to help you build your portrait.",
-        "5. Ghosted labels help you align quadrant edges correctly.",
-    ]
+    c.drawString(top_left_x, section_y, "Project Info")
+    c.setFont("Helvetica", 11)
+    c.drawString(top_left_x, section_y - 20, f"Project Name: {project_name}")
+    c.drawString(top_left_x, section_y - 40, f"Grid Size: {width} x {height}")
+
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(top_left_x, section_y - 70, "Instructions")
     c.setFont("Helvetica", 10)
+    instructions = [
+        "1. Each number represents a dice face (0–6).",
+        "2. Dice color: 0:Black, 1:Red, 2:Blue, 3:Green, 4:Orange, 5:Yellow, 6:White",
+        "3. The mini-grid below shows quadrant zones.",
+        "4. Pages 2–5 contain detailed quadrant build instructions.",
+    ]
     for i, line in enumerate(instructions):
-        c.drawString(margin, instructions_y - 20 - (i * 14), line)
+        c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-    # Dice Map Key Table
-    key_y = instructions_y - 140
+    # --- Top Right: Dice Map Key Table ---
+    col_widths = [50, 90, 50]
+    table_x = top_right_x
+    table_y = section_y
+
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(margin, key_y, "Dice Map Key")
+    c.drawString(table_x, table_y, "Dice Map Key")
 
+    table_y -= 20
     row_height = 18
-    col_widths = [40, 70, 50]
-    table_x = margin
-    table_y = key_y - 20
     table_width = sum(col_widths)
     table_height = row_height * 8
 
-    # Table border
+    # Border
     c.setStrokeColor(black)
     c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
 
@@ -221,72 +228,56 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         cx = table_x + sum(col_widths[:i]) + col_widths[i] / 2
         c.drawCentredString(cx, table_y - row_height / 2 + 4, header)
 
-    # Table rows
+    # Rows
     c.setFont("Helvetica", 10)
     for i in range(7):
         y = table_y - (i + 1) * row_height + 4
         r, g, b, _ = colors[i]
-
-        # Color swatch
-        swatch_x = table_x + 10
-        swatch_y = y + 3
         c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(swatch_x, swatch_y, 20, 10, fill=1, stroke=1)
+        c.rect(table_x + 10, y + 3, 20, 10, fill=1, stroke=1)
 
-        # Dots and Count
         c.setFillColor(black)
         c.drawCentredString(table_x + col_widths[0] + col_widths[1] / 2, y, f"{i} face")
         c.drawCentredString(table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2, y, str(dice_counts[i]))
 
-    c.showPage()
-
-    # === PAGE 2: PREVIEW WITH QUADRANT OUTLINES ===
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(margin, page_height - margin, "Dice Map Quadrant Layout")
-
-    preview_margin_top = 80
-    preview_width = page_width - 2 * margin
-    preview_height = page_height - margin - preview_margin_top
-    cell_size = min(preview_width / width, preview_height / height)
-    grid_origin_x = margin
-    grid_origin_y = margin
-
-    mid_x = width // 2
-    mid_y = height // 2
+    # --- Bottom Half: Mini Grid with Quadrants ---
+    grid_x = margin
+    grid_y = margin + 20
+    grid_width_px = page_width - 2 * margin
+    grid_height_px = bottom_half_height
+    cell_size = min(grid_width_px / width, grid_height_px / height)
 
     c.saveState()
-    c.translate(grid_origin_x, grid_origin_y)
+    c.translate(grid_x, grid_y)
 
-    # Grid cells
     for y in range(height):
         for x in range(width):
             val = grid[y][x]
-            r, g, b, _ = colors[val]
-            c.setFillColorRGB(r / 255, g / 255, b / 255)
-            c.setStrokeColor(gray)
-            c.setLineWidth(0.2)
+            r, g_, b, _ = colors[val]
             px = x * cell_size
             py = (height - y - 1) * cell_size
+            c.setFillColorRGB(r / 255, g_ / 255, b / 255)
+            c.setStrokeColor(gray)
+            c.setLineWidth(0.2)
             c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
 
-    # Draw quadrant outlines + quadrant labels
-    quadrant_labels = ["Page 3", "Page 4", "Page 5", "Page 6"]
+    # Quadrant overlays + labels
+    quadrant_labels = ["Page 2", "Page 3", "Page 4", "Page 5"]
     quadrant_coords = [
         (0, 0, mid_x + 1, mid_y + 1),
         (mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
         (0, mid_y - 1, mid_x + 1, height - mid_y + 1),
         (mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),
     ]
-    c.setStrokeColorRGB(0.2, 0.2, 0.2)
-    c.setLineWidth(1)
+
     c.setFont("Helvetica-Bold", 10)
+    c.setStrokeColor(black)
+    c.setLineWidth(1)
 
     for idx, (sx, sy, w, h) in enumerate(quadrant_coords):
         px = sx * cell_size
         py = (height - sy - h) * cell_size
         c.rect(px, py, w * cell_size, h * cell_size, fill=0, stroke=1)
-
-        # Label
         label_x = px + (w * cell_size) / 2
         label_y = py + (h * cell_size) / 2
         c.drawCentredString(label_x, label_y, quadrant_labels[idx])
@@ -294,7 +285,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.restoreState()
     c.showPage()
 
-    # === PAGES 3–6: QUADRANTS WITH R/C LABELS ===
+    # === Pages 2–5: Detailed Quadrants ===
     quadrants = [
         ("Top Left", 0, 0, mid_x + 1, mid_y + 1),
         ("Top Right", mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
@@ -311,7 +302,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
         available_height = page_height - (margin + 80)
         available_width = page_width - 2 * margin
-        cell_size = min(available_width / (q_width + 1), available_height / (q_height + 1))  # +1 for labels
+        cell_size = min(available_width / (q_width + 1), available_height / (q_height + 1))
 
         grid_left = (page_width - cell_size * (q_width + 1)) / 2
         grid_top = (page_height + cell_size * (q_height + 1)) / 2 - 40
@@ -325,13 +316,12 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 px = grid_left + (x + 1) * cell_size
                 py = grid_top - (y + 1) * cell_size
 
-                # Block with white stroke
                 c.setFillColorRGB(r / 255, g_ / 255, b / 255)
                 c.setStrokeColor(white)
                 c.setLineWidth(0.3)
                 c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
 
-                # Text vertically centered
+                # Centered number
                 c.setFont("Helvetica", 8)
                 text_offset = c._fontsize / 2.5
                 c.setFillColor(text_color)
@@ -355,6 +345,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.showPage()
 
     c.save()
+
 
 
 
