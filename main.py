@@ -134,6 +134,8 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 
 def generate_better_dice_pdf(filepath, grid, project_name):
+    from reportlab.lib.units import mm
+
     height = len(grid)
     width = len(grid[0])
     is_portrait = height >= width
@@ -158,14 +160,14 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         for val in row:
             dice_counts[val] += 1
 
-    # === Page 1: Info Page ===
+    # === PAGE 1: INFO PAGE ===
     c.setFont("Helvetica-Bold", 22)
     title = "Pipcasso Dice Map"
     title_width = c.stringWidth(title, "Helvetica-Bold", 22)
     c.drawString((page_width - title_width) / 2, page_height - margin, title)
 
-    c.setFont("Helvetica", 12)
     info_y = page_height - margin - 40
+    c.setFont("Helvetica", 12)
     c.drawString(margin, info_y, f"Project Name: {project_name}")
     c.drawString(margin, info_y - 20, f"Grid Size: {width} x {height}")
 
@@ -177,85 +179,130 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         "1. Each number in the grid represents a dice face (0–6).",
         "2. Dice color is determined by number:",
         "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
-        "3. The next page shows a preview of the full dice mosaic.",
-        "4. Pages 3–6 break the mosaic into quadrants for easier building.",
-        "5. Ghosted rows and columns help align quadrant edges.",
+        "3. The next page shows the full layout of the mosaic, divided into quadrants.",
+        "4. Pages 3–6 show zoomed-in quadrants to help you build your portrait.",
+        "5. Ghosted labels help you align quadrant edges correctly.",
     ]
     c.setFont("Helvetica", 10)
     for i, line in enumerate(instructions):
         c.drawString(margin, instructions_y - 20 - (i * 14), line)
 
-    # Dice Key
-    key_y = instructions_y - 120
+    # Dice Map Key Table
+    key_y = instructions_y - 140
     c.setFont("Helvetica-Bold", 14)
     c.drawString(margin, key_y, "Dice Map Key")
 
-    col_widths = [60, 120, 60]
+    row_height = 18
+    col_widths = [40, 70, 50]
+    table_x = margin
+    table_y = key_y - 20
+    table_width = sum(col_widths)
+    table_height = row_height * 8
+
+    # Table border
+    c.setStrokeColor(black)
+    c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
+
+    # Horizontal lines
+    for i in range(1, 8):
+        y = table_y - i * row_height
+        c.line(table_x, y, table_x + table_width, y)
+
+    # Vertical lines
+    x = table_x
+    for w in col_widths[:-1]:
+        x += w
+        c.line(x, table_y, x, table_y - table_height)
+
+    # Headers
     headers = ["Color", "Dots (pips)", "Count"]
     c.setFont("Helvetica-Bold", 10)
     for i, header in enumerate(headers):
-        c.drawString(margin + sum(col_widths[:i]) + 5, key_y + 20, header)
+        cx = table_x + sum(col_widths[:i]) + col_widths[i] / 2
+        c.drawCentredString(cx, table_y - row_height / 2 + 4, header)
 
+    # Table rows
     c.setFont("Helvetica", 10)
     for i in range(7):
-        y = key_y - 20 - (i * 18)
+        y = table_y - (i + 1) * row_height + 4
         r, g, b, _ = colors[i]
+
+        # Color swatch
+        swatch_x = table_x + 10
+        swatch_y = y + 3
         c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(margin + 5, y + 4, 20, 10, fill=1, stroke=1)
+        c.rect(swatch_x, swatch_y, 20, 10, fill=1, stroke=1)
+
+        # Dots and Count
         c.setFillColor(black)
-        c.drawString(margin + col_widths[0] + 5, y, f"{i} face")
-        c.drawString(margin + col_widths[0] + col_widths[1] + 5, y, str(dice_counts[i]))
+        c.drawCentredString(table_x + col_widths[0] + col_widths[1] / 2, y, f"{i} face")
+        c.drawCentredString(table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2, y, str(dice_counts[i]))
 
     c.showPage()
 
-    # === Page 2: Preview (smaller labels, quadrant outlines) ===
-    preview_width = page_width - 2 * margin
-    preview_height = page_height - 2 * margin - 20
-    cell_size = min(preview_width / width, preview_height / height)
-    c.saveState()
-    c.translate(margin, margin)
+    # === PAGE 2: PREVIEW WITH QUADRANT OUTLINES ===
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(margin, page_height - margin, "Dice Map Quadrant Layout")
 
-    # Smaller preview with light text
+    preview_margin_top = 80
+    preview_width = page_width - 2 * margin
+    preview_height = page_height - margin - preview_margin_top
+    cell_size = min(preview_width / width, preview_height / height)
+    grid_origin_x = margin
+    grid_origin_y = margin
+
+    mid_x = width // 2
+    mid_y = height // 2
+
+    c.saveState()
+    c.translate(grid_origin_x, grid_origin_y)
+
+    # Grid cells
     for y in range(height):
         for x in range(width):
             val = grid[y][x]
             r, g, b, _ = colors[val]
-            c.setStrokeColorRGB(0.9, 0.9, 0.9)
-            c.setLineWidth(0.3)
             c.setFillColorRGB(r / 255, g / 255, b / 255)
+            c.setStrokeColor(gray)
+            c.setLineWidth(0.2)
             px = x * cell_size
             py = (height - y - 1) * cell_size
             c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
 
-    # Draw quadrant outlines (Problem 3)
-    mid_x = width // 2
-    mid_y = height // 2
-    q_thickness = 1.5
-    c.setStrokeColorRGB(0.3, 0.3, 0.3)
-    c.setLineWidth(q_thickness)
-    c.setDash(3, 2)
-    quadrants = [
+    # Draw quadrant outlines + quadrant labels
+    quadrant_labels = ["Page 3", "Page 4", "Page 5", "Page 6"]
+    quadrant_coords = [
         (0, 0, mid_x + 1, mid_y + 1),
         (mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
         (0, mid_y - 1, mid_x + 1, height - mid_y + 1),
         (mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),
     ]
-    for start_x, start_y, w, h in quadrants:
-        px = start_x * cell_size
-        py = (height - start_y - h) * cell_size
+    c.setStrokeColorRGB(0.2, 0.2, 0.2)
+    c.setLineWidth(1)
+    c.setFont("Helvetica-Bold", 10)
+
+    for idx, (sx, sy, w, h) in enumerate(quadrant_coords):
+        px = sx * cell_size
+        py = (height - sy - h) * cell_size
         c.rect(px, py, w * cell_size, h * cell_size, fill=0, stroke=1)
-    c.setDash()  # reset dash
+
+        # Label
+        label_x = px + (w * cell_size) / 2
+        label_y = py + (h * cell_size) / 2
+        c.drawCentredString(label_x, label_y, quadrant_labels[idx])
 
     c.restoreState()
     c.showPage()
 
-    # === Pages 3–6: Quadrants ===
-    for idx, (name, start_x, start_y, q_width, q_height) in enumerate(
-        [("Top Left", 0, 0, mid_x + 1, mid_y + 1),
-         ("Top Right", mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
-         ("Bottom Left", 0, mid_y - 1, mid_x + 1, height - mid_y + 1),
-         ("Bottom Right", mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1)]
-    ):
+    # === PAGES 3–6: QUADRANTS WITH R/C LABELS ===
+    quadrants = [
+        ("Top Left", 0, 0, mid_x + 1, mid_y + 1),
+        ("Top Right", mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
+        ("Bottom Left", 0, mid_y - 1, mid_x + 1, height - mid_y + 1),
+        ("Bottom Right", mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),
+    ]
+
+    for name, start_x, start_y, q_width, q_height in quadrants:
         c.setPageSize(pagesize)
         c.setFont("Helvetica-Bold", 16)
         c.drawString(margin, page_height - margin, f"Project: {project_name}")
@@ -264,14 +311,10 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
         available_height = page_height - (margin + 80)
         available_width = page_width - 2 * margin
-        cell_size = min(available_width / q_width, available_height / q_height)
+        cell_size = min(available_width / (q_width + 1), available_height / (q_height + 1))  # +1 for labels
 
-        # Updated draw section for vertical centering + white border
-        page_w, page_h = c._pagesize
-        grid_total_w = cell_size * q_width
-        grid_total_h = cell_size * q_height
-        grid_left = (page_w - grid_total_w) / 2
-        grid_top = (page_h + grid_total_h) / 2 - 40
+        grid_left = (page_width - cell_size * (q_width + 1)) / 2
+        grid_top = (page_height + cell_size * (q_height + 1)) / 2 - 40
 
         for y in range(q_height):
             for x in range(q_width):
@@ -279,29 +322,40 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 gy = start_y + y
                 val = grid[gy][gx]
                 r, g_, b, text_color = colors[val]
+                px = grid_left + (x + 1) * cell_size
+                py = grid_top - (y + 1) * cell_size
 
-                px = grid_left + x * cell_size
-                py = grid_top - y * cell_size
-
-                # Background
+                # Block with white stroke
                 c.setFillColorRGB(r / 255, g_ / 255, b / 255)
                 c.setStrokeColor(white)
                 c.setLineWidth(0.3)
-                c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+                c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
 
-                # Centered number
-                c.setFillColor(text_color)
+                # Text vertically centered
                 c.setFont("Helvetica", 8)
-                text_y_offset = c._fontsize / 2.7  # vertical centering fix (Problem 4)
-                c.drawCentredString(
-                    px + cell_size / 2,
-                    py - cell_size / 2 - text_y_offset,
-                    str(val)
-                )
+                text_offset = c._fontsize / 2.5
+                c.setFillColor(text_color)
+                c.drawCentredString(px + cell_size / 2, py + cell_size / 2 - text_offset, str(val))
+
+        # Column labels
+        c.setFont("Helvetica", 8)
+        for x in range(q_width):
+            label = f"C{start_x + x + 1}"
+            px = grid_left + (x + 1) * cell_size
+            py = grid_top
+            c.drawCentredString(px + cell_size / 2, py + 2, label)
+
+        # Row labels
+        for y in range(q_height):
+            label = f"R{start_y + y + 1}"
+            px = grid_left
+            py = grid_top - (y + 1) * cell_size
+            c.drawCentredString(px + cell_size / 2, py + cell_size / 2 - 3, label)
 
         c.showPage()
 
     c.save()
+
 
 
 
