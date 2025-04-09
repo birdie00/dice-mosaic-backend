@@ -159,27 +159,12 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     title_width = c.stringWidth(title, "Helvetica-Bold", 22)
     c.drawString((page_width - title_width) / 2, page_height - margin, title)
 
-    left_x = margin
-    left_y = page_height - margin - 40
     c.setFont("Helvetica", 12)
-    c.drawString(left_x, left_y, f"Project Name: {project_name}")
-    c.drawString(left_x, left_y - 20, f"Grid Size: {width} x {height}")
+    c.drawString(margin, page_height - margin - 40, f"Project Name: {project_name}")
+    c.drawString(margin, page_height - margin - 60, f"Grid Size: {width} x {height}")
 
-    instructions = [
-        "Instructions:",
-        "1. Each number in the grid represents a dice face (0–6).",
-        "2. Dice color is determined by number:",
-        "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
-        "3. Use quadrant pages to place dice in sections.",
-        "4. Ghosted rows/columns help you align your sections correctly.",
-    ]
-    c.setFont("Helvetica", 10)
-    for i, line in enumerate(instructions):
-        c.drawString(left_x, left_y - 50 - (i * 14), line)
-
-    # Draw full-size preview grid (dedicated full page)
     preview_width = page_width - 2 * margin
-    preview_height = page_height - 2 * margin - 120
+    preview_height = page_height - 2 * margin - 100
     cell_size = min(preview_width / width, preview_height / height)
     grid_bottom_y = margin + 20
 
@@ -191,32 +176,34 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         cell_size, 0, 0,
         colors,
         margin,
-        4,  # label font size
-        6,  # number font size
+        4, 6,
         ghost=False
     )
     c.restoreState()
     c.showPage()
 
-    # --- Dice Map Key ---
-    dice_counts = {i: 0 for i in range(7)}
-    for row in grid:
-        for val in row:
-            dice_counts[val] += 1
-
-    c.setFont("Helvetica-Bold", 14)
+    # --- Page 2: Dice Map Key + Instructions ---
+    c.setFont("Helvetica-Bold", 18)
     c.drawString(margin, page_height - margin, f"Project: {project_name}")
-    c.drawString(margin, page_height - margin - 20, f"Dice Map Key:")
 
-    row_height = 18
+    # Dice Map Key
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(margin, page_height - margin - 30, "Dice Map Key")
+
+    col_widths = [60, 120, 60]
     table_x = margin
     table_y = page_height - margin - 60
-    col_widths = [60, 120, 60]
+    row_height = 18
 
     headers = ["Color", "Dots (pips)", "Count"]
     c.setFont("Helvetica-Bold", 10)
     for i, header in enumerate(headers):
         c.drawString(table_x + sum(col_widths[:i]) + 5, table_y, header)
+
+    dice_counts = {i: 0 for i in range(7)}
+    for row in grid:
+        for val in row:
+            dice_counts[val] += 1
 
     c.setFont("Helvetica", 10)
     for i in range(7):
@@ -228,9 +215,25 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.drawString(table_x + col_widths[0] + 5, y, f"{i} face")
         c.drawString(table_x + col_widths[0] + col_widths[1] + 5, y, str(dice_counts[i]))
 
+    # Instructions on same page
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(margin, table_y - 180, "Instructions")
+
+    instructions = [
+        "1. Each number in the grid represents a dice face (0–6).",
+        "2. Dice color is determined by number:",
+        "   0: Black, 1: Red, 2: Blue, 3: Green, 4: Orange, 5: Yellow, 6: White",
+        "3. The first page shows a full preview of your entire dice mosaic.",
+        "4. The following pages break it into 4 quadrants to help with building.",
+        "5. Ghosted (gray) rows and columns help you align quadrant edges.",
+    ]
+    c.setFont("Helvetica", 10)
+    for i, line in enumerate(instructions):
+        c.drawString(margin, table_y - 200 - (i * 16), line)
+
     c.showPage()
 
-    # --- Quadrants ---
+    # --- Pages 3-6: Quadrants ---
     mid_x = width // 2
     mid_y = height // 2
     quadrants = [
@@ -262,6 +265,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.showPage()
 
     c.save()
+
 
 
 
