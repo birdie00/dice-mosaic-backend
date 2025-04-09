@@ -193,47 +193,47 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-# --- Top Right: Dice Map Key Table (with headers inside table) ---
-table_x = top_right_x
-table_y = section_y
-col_widths = [50, 80, 50]
-row_height = 18
-num_rows = 8  # 1 header + 7 dice rows
-table_width = sum(col_widths)
-table_height = row_height * num_rows
+    # --- Top Right: Dice Map Key Table (with headers inside table) ---
+    table_x = top_right_x
+    table_y = section_y
+    col_widths = [50, 80, 50]
+    row_height = 18
+    num_rows = 8  # 1 header + 7 dice rows
+    table_width = sum(col_widths)
+    table_height = row_height * num_rows
 
-c.setFont("Helvetica-Bold", 14)
-c.drawString(table_x, table_y, "Dice Map Key")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(table_x, table_y, "Dice Map Key")
 
-table_y -= 20
+    table_y -= 20
 
-# Border
-c.setStrokeColor(black)
-c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
+    # Border
+    c.setStrokeColor(black)
+    c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
 
-# Internal lines
-for i in range(1, num_rows):
-    y = table_y - i * row_height
-    c.line(table_x, y, table_x + table_width, y)
+    # Internal lines
+    for i in range(1, num_rows):
+        y = table_y - i * row_height
+        c.line(table_x, y, table_x + table_width, y)
 
-x = table_x
-for w in col_widths[:-1]:
-    x += w
-    c.line(x, table_y, x, table_y - table_height)
+    x = table_x
+    for w in col_widths[:-1]:
+        x += w
+        c.line(x, table_y, x, table_y - table_height)
 
-# Headers (inside row 1)
-headers = ["Color", "Dots (pips)", "Count"]
-c.setFont("Helvetica-Bold", 10)
-for i, header in enumerate(headers):
-    cx = table_x + sum(col_widths[:i]) + col_widths[i] / 2
-    cy = table_y - row_height / 2 + 4
-    c.drawCentredString(cx, cy, header)
+    # Headers (inside row 1)
+    headers = ["Color", "Dots (pips)", "Count"]
+    c.setFont("Helvetica-Bold", 10)
+    for i, header in enumerate(headers):
+        cx = table_x + sum(col_widths[:i]) + col_widths[i] / 2
+        cy = table_y - row_height / 2 + 4
+        c.drawCentredString(cx, cy, header)
 
-# Data rows (dice 0–6)
-c.setFont("Helvetica", 10)
-for i in range(7):
-    row_y = table_y - (i + 1) * row_height + 4
-    r, g, b, _ = colors[i]
+    # Data rows (dice 0–6)
+    c.setFont("Helvetica", 10)
+    for i in range(7):
+        row_y = table_y - (i + 1) * row_height + 4
+        r, g, b, _ = colors[i]
 
     # Color swatch (centered in first column)
     swatch_x = table_x + (col_widths[0] - 20) / 2
