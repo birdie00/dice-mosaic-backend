@@ -153,6 +153,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (255, 255, 255, black),
     }
 
+    # --- Page 1: Full Preview ---
     c.setFont("Helvetica-Bold", 22)
     title = "Pipcasso Dice Map"
     title_width = c.stringWidth(title, "Helvetica-Bold", 22)
@@ -176,90 +177,10 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(left_x, left_y - 50 - (i * 14), line)
 
-    dice_counts = {i: 0 for i in range(7)}
-    for row in grid:
-        for val in row:
-            dice_counts[val] += 1
-
-
-    # --- Updated Key Section (Centered with Title) ---
-    table_x = page_width - margin - 180  # total width ~160
-    table_y = page_height - margin - 40
-    row_height = 16
-    col_widths = [40, 70, 50]  # for Color, Dots (pips), Count
-    num_rows = 8
-    num_cols = 3
-    table_width = sum(col_widths)
-    table_height = row_height * num_rows
-
-    # Title above the key
-    c.setFont("Helvetica-Bold", 12)
-    title_text = "Dice Map Key"
-    title_width = c.stringWidth(title_text, "Helvetica-Bold", 12)
-    c.setFillColor(black)
-    c.drawString(table_x + (table_width - title_width) / 2, table_y + 6, title_text)
-
-    # Draw table border
-    c.setStrokeColor(black)
-    c.rect(table_x, table_y - table_height, table_width, table_height, stroke=1, fill=0)
-
-    # Draw horizontal lines
-    for i in range(1, num_rows):
-        y = table_y - i * row_height
-        c.line(table_x, y, table_x + table_width, y)
-
-    # Draw vertical lines
-    x = table_x
-    for width in col_widths[:-1]:
-        x += width
-        c.line(x, table_y, x, table_y - table_height)
-
-    # Headers centered
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(black)
-
-    headers = ["Color", "Dots (pips)", "Count"]
-    x = table_x
-    for i, header in enumerate(headers):
-        col_center = x + col_widths[i] / 2
-        text_width = c.stringWidth(header, "Helvetica-Bold", 10)
-        c.drawString(col_center - text_width / 2, table_y - row_height + 4, header)
-        x += col_widths[i]
-
-    # Data rows
-    c.setFont("Helvetica", 10)
-    for i in range(7):
-        y = table_y - (i + 2) * row_height + 4
-        r, g, b, _ = colors[i]
-
-        # Color swatch in first column
-        swatch_x = table_x + 10  # center-ish inside 40 width
-        swatch_y = table_y - (i + 2) * row_height + 3
-        c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(swatch_x, swatch_y, 20, 10, fill=1, stroke=1)
-
-        # Center text in columns 2 and 3
-        dots_text = f"{i} face"
-        count_text = str(dice_counts[i])
-
-        dots_center = table_x + col_widths[0] + col_widths[1] / 2
-        count_center = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
-
-        dots_width = c.stringWidth(dots_text, "Helvetica", 10)
-        count_width = c.stringWidth(count_text, "Helvetica", 10)
-
-        c.setFillColor(black)
-        c.drawString(dots_center - dots_width / 2, y, dots_text)
-        c.drawString(count_center - count_width / 2, y, count_text)
-
-
-    # Smaller preview with thinner borders and smaller numbers
-    preview_height = page_height / 2 - 40
+    # Draw full-size preview grid (dedicated full page)
     preview_width = page_width - 2 * margin
+    preview_height = page_height - 2 * margin - 120
     cell_size = min(preview_width / width, preview_height / height)
-    grid_height_in_points = cell_size * height
-
-    # Move preview closer to bottom
     grid_bottom_y = margin + 20
 
     c.saveState()
@@ -269,14 +190,47 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         0, 0, width, height,
         cell_size, 0, 0,
         colors,
-        margin,               # use same margin
-        1.0,                  # smaller label font size
-        1.8,                  # smaller number font size
+        margin,
+        4,  # label font size
+        6,  # number font size
         ghost=False
     )
     c.restoreState()
     c.showPage()
 
+    # --- Dice Map Key ---
+    dice_counts = {i: 0 for i in range(7)}
+    for row in grid:
+        for val in row:
+            dice_counts[val] += 1
+
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(margin, page_height - margin, f"Project: {project_name}")
+    c.drawString(margin, page_height - margin - 20, f"Dice Map Key:")
+
+    row_height = 18
+    table_x = margin
+    table_y = page_height - margin - 60
+    col_widths = [60, 120, 60]
+
+    headers = ["Color", "Dots (pips)", "Count"]
+    c.setFont("Helvetica-Bold", 10)
+    for i, header in enumerate(headers):
+        c.drawString(table_x + sum(col_widths[:i]) + 5, table_y, header)
+
+    c.setFont("Helvetica", 10)
+    for i in range(7):
+        y = table_y - row_height * (i + 1)
+        r, g, b, _ = colors[i]
+        c.setFillColorRGB(r / 255, g / 255, b / 255)
+        c.rect(table_x + 5, y + 2, 20, 10, fill=1, stroke=1)
+        c.setFillColor(black)
+        c.drawString(table_x + col_widths[0] + 5, y, f"{i} face")
+        c.drawString(table_x + col_widths[0] + col_widths[1] + 5, y, str(dice_counts[i]))
+
+    c.showPage()
+
+    # --- Quadrants ---
     mid_x = width // 2
     mid_y = height // 2
     quadrants = [
@@ -308,6 +262,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.showPage()
 
     c.save()
+
 
 
 @app.post("/generate-pdf")
