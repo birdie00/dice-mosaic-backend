@@ -70,7 +70,7 @@ async def analyze_image(
     }
 
     styles = []
-        for style_id, settings in style_settings.items():
+    for style_id, settings in style_settings.items():
         processed = apply_enhancements(image.copy(), **settings)
         arr = np.array(processed)
         grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
