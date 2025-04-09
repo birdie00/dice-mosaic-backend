@@ -243,15 +243,27 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.drawString(count_center - count_width / 2, y, count_text)
 
 
-    preview_height = page_height / 2 - margin
+    # Smaller preview with thinner borders and smaller numbers
+    preview_height = page_height / 2 - 40
     preview_width = page_width - 2 * margin
     cell_size = min(preview_width / width, preview_height / height)
     grid_height_in_points = cell_size * height
-    grid_y_center = (page_height / 2 - grid_height_in_points) / 2
+
+    # Move preview closer to bottom
+    grid_bottom_y = margin + 20
 
     c.saveState()
-    c.translate(0, grid_y_center)
-    draw_grid_section(c, grid, 0, 0, width, height, cell_size, 0, 0, colors, margin, 1.5, 2.0, ghost=False)
+    c.translate(0, grid_bottom_y)
+    draw_grid_section(
+        c, grid,
+        0, 0, width, height,
+        cell_size, 0, 0,
+        colors,
+        margin,               # use same margin
+        1.0,                  # smaller label font size
+        1.8,                  # smaller number font size
+        ghost=False
+    )
     c.restoreState()
     c.showPage()
 
