@@ -171,26 +171,58 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         for val in row:
             dice_counts[val] += 1
 
-    right_x = page_width / 2 + 40
-    right_y = page_height - margin - 40
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(black)
-    c.drawString(right_x, right_y, "Key")
+
+    # --- Updated Key Section ---
+    table_x = page_width - margin - 180  # total width ~160
+    table_y = page_height - margin - 40
+    row_height = 16
+    col_widths = [40, 70, 50]  # for Color, Dots (pips), Count
+    num_rows = 8
+    num_cols = 3
+    table_width = sum(col_widths)
+    table_height = row_height * num_rows
+
+    # Draw table border
+    c.setStrokeColor(black)
+    c.rect(table_x, table_y - table_height, table_width, table_height, stroke=1, fill=0)
+
+    # Draw horizontal lines
+    for i in range(1, num_rows):
+        y = table_y - i * row_height
+        c.line(table_x, y, table_x + table_width, y)
+
+    # Draw vertical lines
+    x = table_x
+    for width in col_widths[:-1]:
+        x += width
+        c.line(x, table_y, x, table_y - table_height)
+
+    # Set font and fill color for headers and rows
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(right_x, right_y - 16, "Colour")
-    c.drawString(right_x + 60, right_y - 16, "Dice")
-    c.drawString(right_x + 120, right_y - 16, "Count")
+    c.setFillColor(black)
+
+    headers = ["Color", "Dots (pips)", "Count"]
+    x = table_x
+    for i, header in enumerate(headers):
+        c.drawString(x + 4, table_y - row_height + 4, header)
+        x += col_widths[i]
 
     c.setFont("Helvetica", 10)
     for i in range(7):
-        y = right_y - 32 - (i * 14)
+        y = table_y - (i + 2) * row_height + 4
         r, g, b, _ = colors[i]
-        c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(right_x, y, 20, 10, fill=1, stroke=1)
 
+        # Color swatch in first column
+        swatch_x = table_x + 4
+        swatch_y = table_y - (i + 2) * row_height + 3
+        c.setFillColorRGB(r / 255, g / 255, b / 255)
+        c.rect(swatch_x, swatch_y, 20, 10, fill=1, stroke=1)
+
+        # Text: Dots and Count
         c.setFillColor(black)
-        c.drawString(right_x + 30, y, f"{i} face")
-        c.drawString(right_x + 120, y, str(dice_counts[i]))
+        c.drawString(table_x + col_widths[0] + 4, y, f"{i} face")
+        c.drawString(table_x + col_widths[0] + col_widths[1] + 4, y, str(dice_counts[i]))
+
 
     preview_height = page_height / 2 - margin
     preview_width = page_width - 2 * margin
