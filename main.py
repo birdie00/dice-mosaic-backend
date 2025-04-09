@@ -57,8 +57,9 @@ async def analyze_image(
     grid_width: int = Form(...),
     grid_height: int = Form(...),
 ):
-    image = Image.open(file.file).convert("L").resize((grid_width, grid_height))
-    image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    # Open and prepare the image once
+    original = Image.open(file.file).convert("L")
+    base = original.resize((grid_width, grid_height))
 
     style_settings = {
         1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
@@ -71,12 +72,17 @@ async def analyze_image(
 
     styles = []
     for style_id, settings in style_settings.items():
-        processed = apply_enhancements(image.copy(), **settings)
+        processed = apply_enhancements(base.copy(), **settings)
         arr = np.array(processed)
+
+        if arr.shape != (grid_height, grid_width):
+            print(f"[WARNING] Unexpected array shape: {arr.shape}, expected ({grid_height}, {grid_width})")
+
         grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
         styles.append({"style_id": style_id, "grid": grid})
-   
+
     return JSONResponse(content={"styles": styles})
+
 
 
 def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, global_offset_x, global_offset_y,
