@@ -75,6 +75,8 @@ async def analyze_image(
         arr = np.array(processed)
         grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
         styles.append({"style_id": style_id, "grid": grid})
+   
+    return JSONResponse(content={"styles": styles})
 
 
 def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, global_offset_x, global_offset_y,
