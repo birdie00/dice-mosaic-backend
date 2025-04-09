@@ -163,16 +163,16 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     mid_x = width // 2
     mid_y = height // 2
 
-    # === PAGE 1: INFO PAGE WITH MINI GRID OVERVIEW ===
+    # === PAGE 1 ===
     c.setFont("Helvetica-Bold", 22)
     title = "Pipcasso Dice Map"
     c.drawCentredString(page_width / 2, page_height - margin, title)
 
     top_half_height = (page_height - 2 * margin) * 0.45
     bottom_half_height = (page_height - 2 * margin) * 0.5
+    section_y = page_height - margin - 40
     top_left_x = margin
     top_right_x = page_width / 2 + 10
-    section_y = page_height - margin - 40
 
     # --- Top Left: Project Info + Instructions ---
     c.setFont("Helvetica-Bold", 14)
@@ -193,20 +193,20 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-    # --- Top Right: Dice Map Key Table ---
-    col_widths = [50, 90, 50]
+    # --- Top Right: Dice Map Key Table (Fixed Alignment) ---
     table_x = top_right_x
     table_y = section_y
+    col_widths = [50, 80, 50]
+    row_height = 18
+    table_width = sum(col_widths)
+    table_height = row_height * 8
 
     c.setFont("Helvetica-Bold", 14)
     c.drawString(table_x, table_y, "Dice Map Key")
 
     table_y -= 20
-    row_height = 18
-    table_width = sum(col_widths)
-    table_height = row_height * 8
 
-    # Border
+    # Outer border
     c.setStrokeColor(black)
     c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
 
@@ -233,22 +233,32 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i in range(7):
         y = table_y - (i + 1) * row_height + 4
         r, g, b, _ = colors[i]
+
+        # Color swatch centered in first column
+        swatch_x = table_x + (col_widths[0] - 20) / 2
         c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(table_x + 10, y + 3, 20, 10, fill=1, stroke=1)
+        c.rect(swatch_x, y + 3, 20, 10, fill=1, stroke=1)
 
+        # Dots (centered in column 2)
+        cx1 = table_x + col_widths[0] + col_widths[1] / 2
         c.setFillColor(black)
-        c.drawCentredString(table_x + col_widths[0] + col_widths[1] / 2, y, f"{i} face")
-        c.drawCentredString(table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2, y, str(dice_counts[i]))
+        c.drawCentredString(cx1, y, f"{i} face")
 
-    # --- Bottom Half: Mini Grid with Quadrants ---
-    grid_x = margin
-    grid_y = margin + 20
+        # Count (centered in column 3)
+        cx2 = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
+        c.drawCentredString(cx2, y, str(dice_counts[i]))
+
+    # --- Bottom Half: Mini Mosaic Preview (Centered Horizontally) ---
     grid_width_px = page_width - 2 * margin
     grid_height_px = bottom_half_height
     cell_size = min(grid_width_px / width, grid_height_px / height)
 
+    grid_total_width = cell_size * width
+    preview_x = (page_width - grid_total_width) / 2  # ✅ FIXED: horizontal centering
+    preview_y = margin + 20
+
     c.saveState()
-    c.translate(grid_x, grid_y)
+    c.translate(preview_x, preview_y)
 
     for y in range(height):
         for x in range(width):
@@ -261,7 +271,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             c.setLineWidth(0.2)
             c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
 
-    # Quadrant overlays + labels
+    # Quadrant Overlays + Page Labels
     quadrant_labels = ["Page 2", "Page 3", "Page 4", "Page 5"]
     quadrant_coords = [
         (0, 0, mid_x + 1, mid_y + 1),
@@ -285,7 +295,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.restoreState()
     c.showPage()
 
-    # === Pages 2–5: Detailed Quadrants ===
+    # === Pages 2–5: Quadrants (unchanged from before) ===
     quadrants = [
         ("Top Left", 0, 0, mid_x + 1, mid_y + 1),
         ("Top Right", mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
@@ -321,7 +331,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 c.setLineWidth(0.3)
                 c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
 
-                # Centered number
                 c.setFont("Helvetica", 8)
                 text_offset = c._fontsize / 2.5
                 c.setFillColor(text_color)
@@ -345,6 +354,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.showPage()
 
     c.save()
+
 
 
 
