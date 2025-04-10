@@ -192,44 +192,68 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-    # Dice Map Key
-    table_x = top_right_x
-    table_y = section_y
+    # === DICE MAP KEY ===
+    # Reposition to top-right corner
+    table_margin_top = margin + 20
+    table_x = page_width - margin - 200  # fixed width from right edge
+    table_y = page_height - table_margin_top
+
     col_widths = [50, 80, 50]
     row_height = 18
-    num_rows = 8
+    num_rows = 8  # 1 header + 7 data rows
     table_width = sum(col_widths)
     table_height = row_height * num_rows
 
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(table_x, table_y + 5, "Dice Map Key")
-    table_y -= 15
+    c.drawString(table_x, table_y + 10, "Dice Map Key")
+    table_y -= 10  # slight shift for the heading gap
 
+    # Outer border
     c.setStrokeColor(black)
     c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
-    c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
 
+    # Draw horizontal lines
+    for i in range(1, num_rows):
+        y = table_y - i * row_height
+        c.line(table_x, y, table_x + table_width, y)
+
+    # Draw vertical lines
+    x = table_x
+    for w in col_widths[:-1]:
+        x += w
+        c.line(x, table_y, x, table_y - table_height)
+
+    # Headers inside table
+    headers = ["Color", "Dots (pips)", "Count"]
+    c.setFont("Helvetica-Bold", 10)
+    for i, header in enumerate(headers):
+        cx = table_x + sum(col_widths[:i]) + col_widths[i] / 2
+        cy = table_y - row_height / 2 + 4
+        c.drawCentredString(cx, cy, header)
 
     # Data rows
-    c.setFont("Helvetica", 10)
+    c.setFont("Helvetica", 9)
     for i in range(7):
-        y = table_y - (i + 1) * row_height + 4
+        row_y = table_y - (i + 1) * row_height + 4
         r, g, b, _ = colors[i]
 
-        # Color swatch
-        swatch_x = table_x + (col_widths[0] - 20) / 2
+        # Color swatch centered in cell
+        swatch_width = 20
+        swatch_height = 10
+        swatch_x = table_x + (col_widths[0] - swatch_width) / 2
+        swatch_y = row_y + 2
         c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(swatch_x, y + 3, 20, 10, fill=1, stroke=1)
+        c.rect(swatch_x, swatch_y, swatch_width, swatch_height, fill=1, stroke=1)
 
-        # Text values
-        dots_text = f"{i} face"
-        count_text = str(dice_counts[i])
-        dots_x = table_x + col_widths[0] + col_widths[1] / 2
+        # Center text values in other cells
+        dot_label = f"{i} face"
+        count_label = str(dice_counts[i])
+        dot_x = table_x + col_widths[0] + col_widths[1] / 2
         count_x = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
 
         c.setFillColor(black)
-        c.drawCentredString(dots_x, y, dots_text)
-        c.drawCentredString(count_x, y, count_text)
+        c.drawCentredString(dot_x, row_y, dot_label)
+        c.drawCentredString(count_x, row_y, count_label)
 
     # Mosaic Preview
     preview_y = margin + 20
