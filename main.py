@@ -9,7 +9,6 @@ from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, portrait, letter
 from reportlab.lib.colors import black, white, gray
-from reportlab.lib.units import mm
 import numpy as np
 import os
 import cv2
@@ -50,6 +49,88 @@ def apply_enhancements(pil_img, brightness, contrast, sharpness, gamma=1.0, clah
         arr = np.clip(arr * 255, 0, 255).astype(np.uint8)
         pil_img = Image.fromarray(arr)
     return pil_img
+
+
+@app.post("/analyze")
+async def analyze_image(
+    file: UploadFile = File(...),
+    grid_width: int = Form(...),
+    grid_height: int = Form(...),
+):
+    print(f"[DEBUG] /analyze received: grid_width={grid_width}, grid_height={grid_height}")
+
+    original = Image.open(file.file).convert("L")
+    base = original.resize((grid_width, grid_height))
+
+    print(f"[DEBUG] Resized image to: {base.size}")  # <-- Confirm actual size
+
+    style_settings = {
+        1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
+        2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
+        3: {"brightness": 1.3, "contrast": 1.5, "sharpness": 1.4, "clahe": True, "gamma": 0.85},
+        4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
+        5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
+        6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
+    }
+
+    styles = []
+    for style_id, settings in style_settings.items():
+        processed = apply_enhancements(base.copy(), **settings)
+        arr = np.array(processed)
+        print(f"[DEBUG] Style {style_id} -> numpy shape: {arr.shape}")  # <-- Check grid shape
+
+        grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
+        styles.append({"style_id": style_id, "grid": grid})
+
+    return JSONResponse(content={"styles": styles})
+
+
+
+
+def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, global_offset_x, global_offset_y,
+                      colors, margin, label_font_size, number_font_size, ghost=False):
+    page_width, page_height = c._pagesize
+    grid_total_width = cell_size * width
+    grid_total_height = cell_size * height
+    grid_left = (page_width - grid_total_width) / 2
+    grid_top = (page_height + grid_total_height) / 2 - 40
+
+    for y in range(height):
+        for x in range(width):
+            val = grid[start_y + y][start_x + x]
+            r, g, b, text_color = colors[val]
+            px = grid_left + x * cell_size
+            py = grid_top - y * cell_size
+            is_ghost_cell = ghost and (x == width - 1 or y == height - 1)
+            c.setFillColor(gray if is_ghost_cell else (r / 255, g / 255, b / 255))
+            c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
+            c.setFillColor(gray if is_ghost_cell else text_color)
+            c.setFont("Helvetica", number_font_size + 2)
+            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - ((number_font_size + 2) / 2) * 0.3, str(val))
+
+    for x in range(width):
+        label = f"C{start_x + x + 1}"
+        px = grid_left + x * cell_size
+        py = grid_top + cell_size
+        is_ghost_label = ghost and x == width - 1
+        c.setFillColor(white)
+        c.setStrokeColor(gray if is_ghost_label else black)
+        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+        c.setFillColor(gray if is_ghost_label else black)
+        c.setFont("Helvetica", label_font_size)
+        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
+
+    for y in range(height):
+        label = f"R{start_y + y + 1}"
+        px = grid_left - cell_size
+        py = grid_top - y * cell_size
+        is_ghost_label = ghost and y == height - 1
+        c.setFillColor(white)
+        c.setStrokeColor(gray if is_ghost_label else black)
+        c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
+        c.setFillColor(gray if is_ghost_label else black)
+        c.setFont("Helvetica", label_font_size)
+        c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
 
 def generate_better_dice_pdf(filepath, grid, project_name):
@@ -187,14 +268,13 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.restoreState()
     c.showPage()
 
-    # Quadrant Pages 2–5
+    # Quadrants (Pages 2-5)
     quadrants = [
         ("Top Left", 0, 0, mid_x + 1, mid_y + 1),
         ("Top Right", mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
         ("Bottom Left", 0, mid_y - 1, mid_x + 1, height - mid_y + 1),
         ("Bottom Right", mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),
     ]
-
     for name, start_x, start_y, q_width, q_height in quadrants:
         c.setPageSize(pagesize)
         c.setFont("Helvetica-Bold", 16)
@@ -205,6 +285,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         available_height = page_height - (margin + 80)
         available_width = page_width - 2 * margin
         cell_size = min(available_width / (q_width + 1), available_height / (q_height + 1))
+
         grid_left = (page_width - cell_size * (q_width + 1)) / 2
         grid_top = (page_height + cell_size * (q_height + 1)) / 2 - 40
 
@@ -218,13 +299,14 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 py = grid_top - (y + 1) * cell_size
                 c.setFillColorRGB(r / 255, g_ / 255, b / 255)
                 c.setStrokeColor(white)
-                c.setLineWidth(0.5)
+                c.setLineWidth(0.3)
                 c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
                 c.setFont("Helvetica", 8)
                 text_offset = c._fontsize / 2.5
                 c.setFillColor(text_color)
                 c.drawCentredString(px + cell_size / 2, py + cell_size / 2 - text_offset, str(val))
 
+        # Column and Row Labels
         c.setFont("Helvetica", 8)
         for x in range(q_width):
             label = f"C{start_x + x + 1}"
@@ -240,6 +322,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.showPage()
 
     c.save()
+
 
 
 @app.post("/generate-pdf")
