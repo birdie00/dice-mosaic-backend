@@ -9,6 +9,7 @@ from PIL import Image, ImageEnhance
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, portrait, letter
 from reportlab.lib.colors import black, white, gray
+from reportlab.lib.units import mm
 import numpy as np
 import os
 import cv2
@@ -103,10 +104,13 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
             py = grid_top - y * cell_size
             is_ghost_cell = ghost and (x == width - 1 or y == height - 1)
             c.setFillColor(gray if is_ghost_cell else (r / 255, g / 255, b / 255))
-            c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=0)
+            c.setStrokeColor(white)
+            c.setLineWidth(0.5)
+            c.rect(px, py - cell_size, cell_size, cell_size, fill=1, stroke=1)
             c.setFillColor(gray if is_ghost_cell else text_color)
-            c.setFont("Helvetica", number_font_size + 2)
-            c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - ((number_font_size + 2) / 2) * 0.3, str(val))
+            c.setFont("Helvetica", number_font_size)
+            text_y = py - cell_size / 2 - (number_font_size / 2) * 0.3
+            c.drawCentredString(px + cell_size / 2, text_y, str(val))
 
     for x in range(width):
         label = f"C{start_x + x + 1}"
@@ -131,6 +135,7 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
         c.setFillColor(gray if is_ghost_label else black)
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
+
 
 
 def generate_better_dice_pdf(filepath, grid, project_name):
