@@ -194,63 +194,66 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     # === Dice Map Key ===
     table_x = page_width - margin - 180  # top-right alignment
-    table_y = page_height - margin - 10  # near top
-    col_widths = [50, 80, 50]  # Color | Dots (pips) | Count
+    table_y = page_height - margin - 10  # slight margin below top
+    col_widths = [50, 80, 50]  # columns: Color | Dots (pips) | Count
     row_height = 18
-    num_rows = 8  # 1 header + 7 dice rows
+    num_rows = 8  # 1 header + 7 data rows
     table_width = sum(col_widths)
     table_height = row_height * num_rows
 
-    # Draw title above table
+    # Draw title above the table
     c.setFont("Helvetica-Bold", 14)
+    c.setFillColor(black)
     c.drawString(table_x, table_y + 15, "Dice Map Key")
 
-    # Draw outer border
+    # Draw outer rectangle and grid
     c.setStrokeColor(black)
     c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
 
-    # Draw horizontal lines
+    # Draw horizontal lines (rows)
     for i in range(1, num_rows):
         y = table_y - i * row_height
         c.line(table_x, y, table_x + table_width, y)
 
-    # Draw vertical lines
+    # Draw vertical lines (columns)
     x = table_x
-    for w in col_widths[:-1]:
-        x += w
+    for width in col_widths[:-1]:
+        x += width
         c.line(x, table_y, x, table_y - table_height)
 
-    # Header row (row 0)
+    # === Fill Header Row ===
     headers = ["Color", "Dots (pips)", "Count"]
     c.setFont("Helvetica-Bold", 10)
-    for i, header in enumerate(headers):
-        cx = table_x + sum(col_widths[:i]) + col_widths[i] / 2
-        cy = table_y - row_height / 2 + 4
-        c.drawCentredString(cx, cy, header)
+    for i, text in enumerate(headers):
+        col_x = table_x + sum(col_widths[:i])
+        col_center = col_x + col_widths[i] / 2
+        text_y = table_y - row_height / 2 + 3
+        c.drawCentredString(col_center, text_y, text)
 
-    # Data rows (rows 1–7)
+    # === Fill Data Rows (Dice 0–6) ===
     c.setFont("Helvetica", 9)
     for i in range(7):
-        row_y = table_y - (i + 1) * row_height + 4
-        r, g, b, _ = colors[i]
+        row_top_y = table_y - (i + 1) * row_height
+        cell_center_y = row_top_y + row_height / 2 - 1
 
-        # Column 1: Color swatch
+        # Column 1: Color swatch centered in cell
         swatch_w, swatch_h = 20, 10
         swatch_x = table_x + (col_widths[0] - swatch_w) / 2
-        swatch_y = row_y + 2
+        swatch_y = cell_center_y - swatch_h / 2
+        r, g, b, _ = colors[i]
         c.setFillColorRGB(r / 255, g / 255, b / 255)
         c.rect(swatch_x, swatch_y, swatch_w, swatch_h, fill=1, stroke=1)
 
-        # Column 2: Dots (pips)
-        dots_text = f"{i} face"
-        dots_x = table_x + col_widths[0] + col_widths[1] / 2
+        # Column 2: Dots label
+        dots_label = f"{i} face"
+        dots_center_x = table_x + col_widths[0] + col_widths[1] / 2
         c.setFillColor(black)
-        c.drawCentredString(dots_x, row_y, dots_text)
+        c.drawCentredString(dots_center_x, cell_center_y - 1, dots_label)
 
-        # Column 3: Count
-        count_text = str(dice_counts[i])
-        count_x = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
-        c.drawCentredString(count_x, row_y, count_text)
+        # Column 3: Count value
+        count_label = str(dice_counts[i])
+        count_center_x = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
+        c.drawCentredString(count_center_x, cell_center_y - 1, count_label)
 
 
 
