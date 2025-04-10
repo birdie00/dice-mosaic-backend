@@ -165,6 +165,13 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     mid_x = width // 2
     mid_y = height // 2
 
+    # Define missing colors manually
+    red = Color(1, 0, 0)
+    blue = Color(0, 0, 1)
+    green = Color(0, 0.5, 0)
+    orange = Color(1, 0.65, 0)
+    yellow = Color(1, 1, 0)
+
     # Page 1 Heading
     c.setFont("Helvetica-Bold", 22)
     c.drawCentredString(page_width / 2, page_height - margin, "Pipcasso Dice Map")
