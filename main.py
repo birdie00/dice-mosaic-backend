@@ -16,12 +16,21 @@ import cv2
 
 app = FastAPI()
 
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = [
+    "https://dice-mosaic-frontend.vercel.app",  # ✅ your live frontend domain
+    "http://localhost:3000",  # optional: for local dev
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 if not os.path.exists("static"):
     os.makedirs("static")
@@ -165,13 +174,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     mid_x = width // 2
     mid_y = height // 2
 
-    # Define missing colors manually
-    red = Color(1, 0, 0)
-    blue = Color(0, 0, 1)
-    green = Color(0, 0.5, 0)
-    orange = Color(1, 0.65, 0)
-    yellow = Color(1, 1, 0)
-
     # Page 1 Heading
     c.setFont("Helvetica-Bold", 22)
     c.drawCentredString(page_width / 2, page_height - margin, "Pipcasso Dice Map")
@@ -199,38 +201,68 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-        # === Draw 8x3 Table on Top Right (Black Border) ===
-        col_widths = [50, 80, 50]
-        row_height = 18
-        num_rows = 8
-        table_width = sum(col_widths)
-        table_height = row_height * num_rows
-        table_x = top_right_x
-        table_y = section_y + 60  # move it a bit down
+    # === Dice Map Key ===
+    table_x = page_width - margin - 180  # top-right alignment
+    table_y = page_height - margin - 10  # slight margin below top
+    col_widths = [50, 80, 50]  # columns: Color | Dots (pips) | Count
+    row_height = 18
+    num_rows = 8  # 1 header + 7 data rows
+    table_width = sum(col_widths)
+    table_height = row_height * num_rows
 
-        # Draw outer border
-        c.setStrokeColor(black)
-        c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
+    # Draw title above the table
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColor(black)
+    c.drawString(table_x, table_y + 15, "Dice Map Key")
 
-        # Draw internal horizontal lines
-        for i in range(1, num_rows):
-            y = table_y - i * row_height
-            c.line(table_x, y, table_x + table_width, y)
+    # Draw outer rectangle and grid
+    c.setStrokeColor(black)
+    c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
 
-        # Draw internal vertical lines
-        x = table_x
-        for width in col_widths[:-1]:
-            x += width
-            c.line(x, table_y, x, table_y - table_height)
+    # Draw horizontal lines (rows)
+    for i in range(1, num_rows):
+        y = table_y - i * row_height
+        c.line(table_x, y, table_x + table_width, y)
 
-        # Fill column 1, rows 2–8 with background colors
-        row_colors = [black, red, blue, green, orange, yellow, white]
-        for i, color in enumerate(row_colors):
-            row_y = table_y - (i + 1) * row_height
-            c.setFillColor(color)
-            c.rect(table_x + 1, row_y + 1, col_widths[0] - 2, row_height - 2, fill=1, stroke=0)
+    # Draw vertical lines (columns)
+    x = table_x
+    for width in col_widths[:-1]:
+        x += width
+        c.line(x, table_y, x, table_y - table_height)
 
-        c.setFillColor(black)  # reset fill color for next content
+    # === Fill Header Row ===
+    headers = ["Color", "Dots (pips)", "Count"]
+    c.setFont("Helvetica-Bold", 10)
+    for i, text in enumerate(headers):
+        col_x = table_x + sum(col_widths[:i])
+        col_center = col_x + col_widths[i] / 2
+        text_y = table_y - row_height / 2 + 3
+        c.drawCentredString(col_center, text_y, text)
+
+    # === Fill Data Rows (Dice 0–6) ===
+    c.setFont("Helvetica", 9)
+    for i in range(7):
+        row_top_y = table_y - (i + 1) * row_height
+        cell_center_y = row_top_y + row_height / 2 - 1
+
+        # Column 1: Color swatch centered in cell
+        swatch_w, swatch_h = 20, 10
+        swatch_x = table_x + (col_widths[0] - swatch_w) / 2
+        swatch_y = cell_center_y - swatch_h / 2
+        r, g, b, _ = colors[i]
+        c.setFillColorRGB(r / 255, g / 255, b / 255)
+        c.rect(swatch_x, swatch_y, swatch_w, swatch_h, fill=1, stroke=1)
+
+        # Column 2: Dots label
+        dots_label = f"{i} face"
+        dots_center_x = table_x + col_widths[0] + col_widths[1] / 2
+        c.setFillColor(black)
+        c.drawCentredString(dots_center_x, cell_center_y - 1, dots_label)
+
+        # Column 3: Count value
+        count_label = str(dice_counts[i])
+        count_center_x = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
+        c.drawCentredString(count_center_x, cell_center_y - 1, count_label)
 
 
 
