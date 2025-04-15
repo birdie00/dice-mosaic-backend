@@ -370,45 +370,38 @@ async def generate_image(request: Request):
     grid = body.get("grid_data")
     style_id = body.get("style_id")
     project_name = body.get("project_name", "Pipcasso")
-    resolution = body.get("resolution", "low")  # "low" or "high"
-    mode = body.get("mode", "dice")  # for future pixel art
+    resolution = body.get("resolution", "low")
+    mode = body.get("mode", "dice")
 
     if not grid:
         return JSONResponse(status_code=400, content={"error": "Missing grid_data"})
 
-    # Resolution logic
-    max_dim = 2000 if resolution == "low" else 10300
-    height = len(grid)
-    width = len(grid[0])
-    scale = min(max_dim / width, max_dim / height)
-    image_width = int(width * scale)
-    image_height = int(height * scale)
-    cell_size = int(scale)
+    # Set dice image folder inside backend
+    dice_dir = os.path.join(os.getcwd(), "frontend", "public", "dice")
 
-    # Dice color mapping
-    colors = {
-        0: (0, 0, 0),
-        1: (255, 0, 0),
-        2: (0, 0, 255),
-        3: (0, 128, 0),
-        4: (255, 165, 0),
-        5: (255, 255, 0),
-        6: (255, 255, 255),
+    # Load and resize dice images
+    dice_size = 20 if resolution == "low" else 100
+    dice_images = {
+        i: Image.open(os.path.join(dice_dir, f"dice_{i}.png")).convert("RGBA").resize((dice_size, dice_size), Image.LANCZOS)
+        for i in range(7)
     }
 
-    img = Image.new("RGB", (image_width, image_height), "white")
-    draw = ImageDraw.Draw(img)
+    height = len(grid)
+    width = len(grid[0])
+    img_width = width * dice_size
+    img_height = height * dice_size
+
+    mosaic = Image.new("RGBA", (img_width, img_height), (255, 255, 255, 255))
 
     for y, row in enumerate(grid):
         for x, val in enumerate(row):
-            val = max(0, min(6, int(val)))
-            color = colors.get(val, (0, 0, 0))
-            top_left = (x * cell_size, y * cell_size)
-            bottom_right = (top_left[0] + cell_size, top_left[1] + cell_size)
-            draw.rectangle([top_left, bottom_right], fill=color)
+            dice_val = int(val)
+            if dice_val in dice_images:
+                dice_img = dice_images[dice_val]
+                mosaic.paste(dice_img, (x * dice_size, y * dice_size), mask=dice_img)
 
-    filename = f"{mode}_{resolution}_{uuid4().hex}.png"
+    filename = f"dice_mosaic_{resolution}_{uuid4().hex}.png"
     filepath = os.path.join("static", filename)
-    img.save(filepath)
+    mosaic.convert("RGB").save(filepath)
 
     return JSONResponse(content={"image_url": f"/static/{filename}"})
