@@ -13,6 +13,9 @@ from reportlab.lib.units import mm
 import numpy as np
 import os
 import cv2
+from fastapi import Request
+from PIL import ImageDraw
+
 
 app = FastAPI()
 
@@ -358,3 +361,54 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     generate_better_dice_pdf(filepath, grid, project_name)
 
     return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
+from fastapi import Request
+from PIL import ImageDraw
+
+@app.post("/generate-image")
+async def generate_image(request: Request):
+    body = await request.json()
+    grid = body.get("grid_data")
+    style_id = body.get("style_id")
+    project_name = body.get("project_name", "Pipcasso")
+    resolution = body.get("resolution", "low")  # "low" or "high"
+    mode = body.get("mode", "dice")  # for future pixel art
+
+    if not grid:
+        return JSONResponse(status_code=400, content={"error": "Missing grid_data"})
+
+    # Resolution logic
+    max_dim = 2000 if resolution == "low" else 10300
+    height = len(grid)
+    width = len(grid[0])
+    scale = min(max_dim / width, max_dim / height)
+    image_width = int(width * scale)
+    image_height = int(height * scale)
+    cell_size = int(scale)
+
+    # Dice color mapping
+    colors = {
+        0: (0, 0, 0),
+        1: (255, 0, 0),
+        2: (0, 0, 255),
+        3: (0, 128, 0),
+        4: (255, 165, 0),
+        5: (255, 255, 0),
+        6: (255, 255, 255),
+    }
+
+    img = Image.new("RGB", (image_width, image_height), "white")
+    draw = ImageDraw.Draw(img)
+
+    for y, row in enumerate(grid):
+        for x, val in enumerate(row):
+            val = max(0, min(6, int(val)))
+            color = colors.get(val, (0, 0, 0))
+            top_left = (x * cell_size, y * cell_size)
+            bottom_right = (top_left[0] + cell_size, top_left[1] + cell_size)
+            draw.rectangle([top_left, bottom_right], fill=color)
+
+    filename = f"{mode}_{resolution}_{uuid4().hex}.png"
+    filepath = os.path.join("static", filename)
+    img.save(filepath)
+
+    return JSONResponse(content={"image_url": f"/static/{filename}"})
