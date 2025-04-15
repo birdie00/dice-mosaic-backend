@@ -370,6 +370,8 @@ async def generate_image(request: Request):
     style_id = body.get("style_id")
     project_name = body.get("project_name", "Pipcasso")
     resolution = body.get("resolution", "low")
+    print("🧩 Request resolution:", resolution)
+
     mode = body.get("mode", "dice")
 
     if not grid:
