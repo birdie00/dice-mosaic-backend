@@ -362,6 +362,7 @@ from PIL import ImageDraw
 
 @app.post("/generate-image")
 async def generate_image(request: Request):
+    print("🎯 /generate-image hit")
     body = await request.json()
     grid = body.get("grid_data")
     style_id = body.get("style_id")
