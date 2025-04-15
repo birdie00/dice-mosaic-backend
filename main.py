@@ -379,7 +379,7 @@ async def generate_image(request: Request):
         return JSONResponse(status_code=400, content={"error": "Missing grid_data"})
 
     # Set dice image folder inside backend
-    dice_dir = os.path.join(os.getcwd(), "frontend", "public", "dice")
+    dice_dir = os.path.join(os.getcwd(), "dice")
 
     # Load and resize dice images
     dice_size = 20 if resolution == "low" else 100
