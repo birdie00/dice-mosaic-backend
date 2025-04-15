@@ -377,7 +377,6 @@ async def generate_image(request: Request):
 
     # Set dice image folder inside backend
     dice_dir = os.path.join(os.getcwd(), "dice")
-    import os
     print("🧾 dice_dir:", dice_dir)
     print("📂 dice_dir contents:", os.listdir(dice_dir) if os.path.exists(dice_dir) else "MISSING")
 
