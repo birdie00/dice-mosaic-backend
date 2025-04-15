@@ -23,11 +23,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 👈 temporarily allow all origins
+    allow_origins=[
+        "https://dice-mosaic-frontend.vercel.app",
+        "https://www.dice-mosaic-frontend.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 
