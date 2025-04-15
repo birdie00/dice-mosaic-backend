@@ -375,39 +375,37 @@ async def generate_image(request: Request):
     if not grid:
         return JSONResponse(status_code=400, content={"error": "Missing grid_data"})
 
-# Set dice image folder inside backend
-dice_dir = os.path.join(os.getcwd(), "dice")
+    # Set dice image folder inside backend
+    dice_dir = os.path.join(os.getcwd(), "dice")
 
-# Load and resize dice images
-dice_size = 20 if resolution == "low" else 100
+    # Load and resize dice images
+    dice_size = 20 if resolution == "low" else 100
 
-try:
-    dice_images = {
-        i: Image.open(os.path.join(dice_dir, f"dice_{i}.png")).convert("RGBA").resize((dice_size, dice_size), Image.LANCZOS)
-        for i in range(7)
-    }
-except Exception as e:
-    print(f"❌ Error loading dice images: {e}")
-    return JSONResponse(status_code=500, content={"error": "Server failed to load dice images."})
+    try:
+        dice_images = {
+            i: Image.open(os.path.join(dice_dir, f"dice_{i}.png")).convert("RGBA").resize((dice_size, dice_size), Image.LANCZOS)
+            for i in range(7)
+        }
+    except Exception as e:
+        print(f"❌ Error loading dice images: {e}")
+        return JSONResponse(status_code=500, content={"error": "Server failed to load dice images."})
 
-# 👇 Everything below here should align with the try/except block (not inside it)
+    height = len(grid)
+    width = len(grid[0])
+    img_width = width * dice_size
+    img_height = height * dice_size
 
-height = len(grid)
-width = len(grid[0])
-img_width = width * dice_size
-img_height = height * dice_size
+    mosaic = Image.new("RGBA", (img_width, img_height), (255, 255, 255, 255))
 
-mosaic = Image.new("RGBA", (img_width, img_height), (255, 255, 255, 255))
+    for y, row in enumerate(grid):
+        for x, val in enumerate(row):
+            dice_val = int(val)
+            if dice_val in dice_images:
+                dice_img = dice_images[dice_val]
+                mosaic.paste(dice_img, (x * dice_size, y * dice_size), mask=dice_img)
 
-for y, row in enumerate(grid):
-    for x, val in enumerate(row):
-        dice_val = int(val)
-        if dice_val in dice_images:
-            dice_img = dice_images[dice_val]
-            mosaic.paste(dice_img, (x * dice_size, y * dice_size), mask=dice_img)
+    filename = f"dice_mosaic_{resolution}_{uuid4().hex}.png"
+    filepath = os.path.join("static", filename)
+    mosaic.convert("RGB").save(filepath)
 
-filename = f"dice_mosaic_{resolution}_{uuid4().hex}.png"
-filepath = os.path.join("static", filename)
-mosaic.convert("RGB").save(filepath)
-
-return JSONResponse(content={"image_url": f"/static/{filename}"})
+    return JSONResponse(content={"image_url": f"/static/{filename}"})
