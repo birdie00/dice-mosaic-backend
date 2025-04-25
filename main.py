@@ -148,201 +148,111 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 
 
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.pagesizes import letter, landscape, portrait
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+import io
+
 def generate_better_dice_pdf(filepath, grid, project_name):
     height = len(grid)
     width = len(grid[0])
     is_portrait = height >= width
     pagesize = portrait(letter) if is_portrait else landscape(letter)
-    c = canvas.Canvas(filepath, pagesize=pagesize)
-    page_width, page_height = pagesize
-    margin = 40
 
-    colors = {
-        0: (0, 0, 0, white),
-        1: (255, 0, 0, white),
-        2: (0, 0, 255, white),
-        3: (0, 128, 0, white),
-        4: (255, 165, 0, black),
-        5: (255, 255, 0, black),
-        6: (255, 255, 255, black),
-    }
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=pagesize, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=30)
+    styles = getSampleStyleSheet()
+    elements = []
 
+    # Title Page
+    elements.append(Paragraph("🎲 <b>Pipcasso Dice Map</b>", styles['Title']))
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(f"<b>Project:</b> {project_name}", styles['Heading2']))
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(f"<b>Grid Size:</b> {width} x {height}", styles['Normal']))
+    elements.append(Spacer(1, 20))
+
+    instructions = """
+    <b>Instructions:</b><br/>
+    1. Each number represents a dice face (0–6).<br/>
+    2. Build quadrant-by-quadrant following the pages.<br/>
+    3. Dice Colors: 0=Black, 1=Red, 2=Blue, 3=Green, 4=Orange, 5=Yellow, 6=White.
+    """
+    elements.append(Paragraph(instructions, styles['Normal']))
+    elements.append(Spacer(1, 30))
+
+    # Dice Map Key Table
     dice_counts = {i: 0 for i in range(7)}
     for row in grid:
         for val in row:
             dice_counts[val] += 1
 
-    mid_x = width // 2
-    mid_y = height // 2
-
-    # Page 1 Heading
-    c.setFont("Helvetica-Bold", 22)
-    c.drawCentredString(page_width / 2, page_height - margin, "Pipcasso Dice Map")
-
-    section_y = page_height - margin - 40
-    top_left_x = margin
-    top_right_x = page_width / 2 + 10
-
-    # Instructions and Project Info
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(top_left_x, section_y, "Project Info")
-    c.setFont("Helvetica", 11)
-    c.drawString(top_left_x, section_y - 20, f"Project Name: {project_name}")
-    c.drawString(top_left_x, section_y - 40, f"Grid Size: {width} x {height}")
-
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(top_left_x, section_y - 70, "Instructions")
-    c.setFont("Helvetica", 10)
-    instructions = [
-        "1. Each number represents a dice face (0–6).",
-        "2. Dice color: 0:Black, 1:Red, 2:Blue, 3:Green, 4:Orange, 5:Yellow, 6:White",
-        "3. The mini-grid below shows quadrant zones.",
-        "4. Pages 2–5 contain detailed quadrant build instructions.",
-    ]
-    for i, line in enumerate(instructions):
-        c.drawString(top_left_x, section_y - 90 - (i * 14), line)
-
-    # === Dice Map Key ===
-    table_x = page_width - margin - 180  # top-right alignment
-    table_y = page_height - margin - 10  # slight margin below top
-    col_widths = [50, 80, 50]  # columns: Color | Dots (pips) | Count
-    row_height = 18
-    num_rows = 8  # 1 header + 7 data rows
-    table_width = sum(col_widths)
-    table_height = row_height * num_rows
-
-    # Draw title above the table
-    c.setFont("Helvetica-Bold", 14)
-    c.setFillColor(black)
-    c.drawString(table_x, table_y + 15, "Dice Map Key")
-
-    # Draw outer rectangle and grid
-    c.setStrokeColor(black)
-    c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
-
-    # Draw horizontal lines (rows)
-    for i in range(1, num_rows):
-        y = table_y - i * row_height
-        c.line(table_x, y, table_x + table_width, y)
-
-    # Draw vertical lines (columns)
-    x = table_x
-    for width in col_widths[:-1]:
-        x += width
-        c.line(x, table_y, x, table_y - table_height)
-
-    # === Fill Header Row ===
-    headers = ["Color", "Dots (pips)", "Count"]
-    c.setFont("Helvetica-Bold", 10)
-    for i, text in enumerate(headers):
-        col_x = table_x + sum(col_widths[:i])
-        col_center = col_x + col_widths[i] / 2
-        text_y = table_y - row_height / 2 + 3
-        c.drawCentredString(col_center, text_y, text)
-
-    # === Fill Data Rows (Dice 0–6) ===
-    c.setFont("Helvetica", 9)
+    table_data = [["Dice Face", "Color", "Count"]]
+    colors_dict = {
+        0: "Black", 1: "Red", 2: "Blue", 3: "Green", 4: "Orange", 5: "Yellow", 6: "White"
+    }
     for i in range(7):
-        row_top_y = table_y - (i + 1) * row_height
-        cell_center_y = row_top_y + row_height / 2 - 1
+        table_data.append([str(i), colors_dict[i], str(dice_counts[i])])
 
-        # Column 1: Color swatch centered in cell
-        swatch_w, swatch_h = 20, 10
-        swatch_x = table_x + (col_widths[0] - swatch_w) / 2
-        swatch_y = cell_center_y - swatch_h / 2
-        r, g, b, _ = colors[i]
-        c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(swatch_x, swatch_y, swatch_w, swatch_h, fill=1, stroke=1)
+    table = Table(table_data, hAlign='LEFT')
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER')
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 30))
 
-        # Column 2: Dots label
-        dots_label = f"{i} face"
-        dots_center_x = table_x + col_widths[0] + col_widths[1] / 2
-        c.setFillColor(black)
-        c.drawCentredString(dots_center_x, cell_center_y - 1, dots_label)
+    # Split into 4 quadrants
+    quadrants = split_into_quadrants(grid)
+    quadrant_titles = ["Top Left", "Top Right", "Bottom Left", "Bottom Right"]
 
-        # Column 3: Count value
-        count_label = str(dice_counts[i])
-        count_center_x = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
-        c.drawCentredString(count_center_x, cell_center_y - 1, count_label)
+    for idx, quad in enumerate(quadrants):
+        elements.append(Paragraph(f"<b>Quadrant: {quadrant_titles[idx]}</b>", styles['Heading2']))
+        elements.append(Spacer(1, 10))
+        q_table = build_grid_table(quad)
+        elements.append(q_table)
+        elements.append(Spacer(1, 30))
 
+    # Footer
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph('<font size="8">Generated by Pipcasso 🧡</font>', styles['Normal']))
 
+    doc.build(elements)
 
-    # Mosaic Preview
-    preview_y = margin + 20
-    grid_width_px = page_width - 2 * margin
-    grid_height_px = (page_height - 2 * margin) * 0.4
-    cell_size = min(grid_width_px / width, grid_height_px / height)
-    preview_x = (page_width - (cell_size * width)) / 2
+    # Save to file
+    with open(filepath, 'wb') as f:
+        f.write(buffer.getvalue())
 
-    c.saveState()
-    c.translate(preview_x, preview_y)
-    for y in range(height):
-        for x in range(width):
-            val = grid[y][x]
-            r, g_, b, _ = colors[val]
-            px = x * cell_size
-            py = (height - y - 1) * cell_size
-            c.setFillColorRGB(r / 255, g_ / 255, b / 255)
-            c.setStrokeColor(gray)
-            c.setLineWidth(0.2)
-            c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
-    c.restoreState()
-    c.showPage()
-
-    # Quadrants (Pages 2-5)
-    quadrants = [
-        ("Top Left", 0, 0, mid_x + 1, mid_y + 1),
-        ("Top Right", mid_x - 1, 0, width - mid_x + 1, mid_y + 1),
-        ("Bottom Left", 0, mid_y - 1, mid_x + 1, height - mid_y + 1),
-        ("Bottom Right", mid_x - 1, mid_y - 1, width - mid_x + 1, height - mid_y + 1),
+def split_into_quadrants(grid):
+    mid_row = len(grid) // 2
+    mid_col = len(grid[0]) // 2
+    return [
+        [row[:mid_col] for row in grid[:mid_row]],   # Top Left
+        [row[mid_col:] for row in grid[:mid_row]],   # Top Right
+        [row[:mid_col] for row in grid[mid_row:]],   # Bottom Left
+        [row[mid_col:] for row in grid[mid_row:]]    # Bottom Right
     ]
-    for name, start_x, start_y, q_width, q_height in quadrants:
-        c.setPageSize(pagesize)
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(margin, page_height - margin, f"Project: {project_name}")
-        c.setFont("Helvetica", 14)
-        c.drawString(margin, page_height - margin - 20, f"Quadrant: {name}")
 
-        available_height = page_height - (margin + 80)
-        available_width = page_width - 2 * margin
-        cell_size = min(available_width / (q_width + 1), available_height / (q_height + 1))
+def build_grid_table(grid):
+    # Convert grid into table data
+    table_data = []
+    for row in grid:
+        table_data.append([str(val) for val in row])
 
-        grid_left = (page_width - cell_size * (q_width + 1)) / 2
-        grid_top = (page_height + cell_size * (q_height + 1)) / 2 - 40
-
-        for y in range(q_height):
-            for x in range(q_width):
-                gx = start_x + x
-                gy = start_y + y
-                val = grid[gy][gx]
-                r, g_, b, text_color = colors[val]
-                px = grid_left + (x + 1) * cell_size
-                py = grid_top - (y + 1) * cell_size
-                c.setFillColorRGB(r / 255, g_ / 255, b / 255)
-                c.setStrokeColor(white)
-                c.setLineWidth(0.3)
-                c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
-                c.setFont("Helvetica", 8)
-                text_offset = c._fontsize / 2.5
-                c.setFillColor(text_color)
-                c.drawCentredString(px + cell_size / 2, py + cell_size / 2 - text_offset, str(val))
-
-        # Column and Row Labels
-        c.setFont("Helvetica", 8)
-        for x in range(q_width):
-            label = f"C{start_x + x + 1}"
-            px = grid_left + (x + 1) * cell_size
-            py = grid_top
-            c.drawCentredString(px + cell_size / 2, py + 2, label)
-        for y in range(q_height):
-            label = f"R{start_y + y + 1}"
-            px = grid_left
-            py = grid_top - (y + 1) * cell_size
-            c.drawCentredString(px + cell_size / 2, py + cell_size / 2 - 3, label)
-
-        c.showPage()
-
-    c.save()
+    table = Table(table_data)
+    table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+        ('FONTNAME', (0, 0), (-1, -1), 'Courier'),
+        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER')
+    ]))
+    return table
 
 
 
