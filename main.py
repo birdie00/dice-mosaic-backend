@@ -16,6 +16,7 @@ import cv2
 from fastapi import Request
 from PIL import ImageDraw
 from reportlab.platypus import Table, TableStyle
+from reportlab.lib import colors as rl_colors
 
 
 app = FastAPI()
@@ -203,8 +204,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-    from reportlab.platypus import Table, TableStyle
-
     # Prepare data for the table
     data = [["Color", "Dots (pips)", "Count"]]
     for i in range(7):
@@ -230,7 +229,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     # Now manually paint the color swatches
     for i in range(1, 8):
-        r, g, b, _ = colors_dict[i-1]
+        r, g, b, _ = colors[i - 1]
         dice_key_table._cellvalues[i][0] = ""  # Placeholder (reportlab won't let you embed colors directly)
         dice_key_table.setStyle([
             ('BACKGROUND', (0,i), (0,i), colors.Color(r/255, g/255, b/255)),
@@ -239,33 +238,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     # Draw the table at a specific position
     w, h = dice_key_table.wrapOn(c, page_width, page_height)
     dice_key_table.drawOn(c, page_width - w - margin, page_height - margin - h)
-
-
-    # === Fill Data Rows (Dice 0–6) ===
-    c.setFont("Helvetica", 9)
-    for i in range(7):
-        row_top_y = table_y - (i + 1) * row_height
-        cell_center_y = row_top_y + row_height / 2 - 1
-
-        # Column 1: Color swatch centered in cell
-        swatch_w, swatch_h = 20, 10
-        swatch_x = table_x + (col_widths[0] - swatch_w) / 2
-        swatch_y = cell_center_y - swatch_h / 2
-        r, g, b, _ = colors[i]
-        c.setFillColorRGB(r / 255, g / 255, b / 255)
-        c.rect(swatch_x, swatch_y, swatch_w, swatch_h, fill=1, stroke=1)
-
-        # Column 2: Dots label
-        dots_label = f"{i} face"
-        dots_center_x = table_x + col_widths[0] + col_widths[1] / 2
-        c.setFillColor(black)
-        c.drawCentredString(dots_center_x, cell_center_y - 1, dots_label)
-
-        # Column 3: Count value
-        count_label = str(dice_counts[i])
-        count_center_x = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
-        c.drawCentredString(count_center_x, cell_center_y - 1, count_label)
-
 
 
     # Mosaic Preview
