@@ -31,10 +31,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-
-
-
 if not os.path.exists("static"):
     os.makedirs("static")
 
@@ -218,7 +214,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     # Style the table
     dice_key_table.setStyle(TableStyle([
         ('GRID', (0,0), (-1,-1), 0.5, rl_colors.black),
-        ('BACKGROUND', (0,0), (-1,0), rl_colors.lightgrey),
+        ('BACKGROUND', (0,i), (0,i), rl_colors.Color(r/255, g/255, b/255)),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
         ('FONTSIZE', (0,0), (-1,0), 10),
@@ -232,8 +228,9 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         r, g, b, _ = colors[i - 1]
         dice_key_table._cellvalues[i][0] = ""  # Placeholder (reportlab won't let you embed colors directly)
         dice_key_table.setStyle([
-            ('BACKGROUND', (0,i), (0,i), colors.Color(r/255, g/255, b/255)),
+            ('BACKGROUND', (0,i), (0,i), rl_colors.Color(r/255, g/255, b/255)),
         ])
+
 
     # Draw the table at a specific position
     w, h = dice_key_table.wrapOn(c, page_width, page_height)
