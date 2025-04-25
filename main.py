@@ -15,6 +15,7 @@ import os
 import cv2
 from fastapi import Request
 from PIL import ImageDraw
+from reportlab.platypus import Table, TableStyle
 
 
 app = FastAPI()
@@ -202,43 +203,43 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for i, line in enumerate(instructions):
         c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-    # === Dice Map Key ===
-    table_x = page_width - margin - 180  # top-right alignment
-    table_y = page_height - margin - 10  # slight margin below top
-    col_widths = [50, 80, 50]  # columns: Color | Dots (pips) | Count
-    row_height = 18
-    num_rows = 8  # 1 header + 7 data rows
-    table_width = sum(col_widths)
-    table_height = row_height * num_rows
+    from reportlab.platypus import Table, TableStyle
 
-    # Draw title above the table
-    c.setFont("Helvetica-Bold", 14)
-    c.setFillColor(black)
-    c.drawString(table_x, table_y + 15, "Dice Map Key")
+    # Prepare data for the table
+    data = [["Color", "Dots (pips)", "Count"]]
+    for i in range(7):
+        color_box = ""  # We'll handle color separately
+        dots_label = f"{i} face"
+        count_label = str(dice_counts[i])
+        data.append([color_box, dots_label, count_label])
 
-    # Draw outer rectangle and grid
-    c.setStrokeColor(black)
-    c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
+    # Create the table
+    dice_key_table = Table(data, colWidths=[40, 80, 40])
 
-    # Draw horizontal lines (rows)
-    for i in range(1, num_rows):
-        y = table_y - i * row_height
-        c.line(table_x, y, table_x + table_width, y)
+    # Style the table
+    dice_key_table.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (-1,-1), 9),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
 
-    # Draw vertical lines (columns)
-    x = table_x
-    for width in col_widths[:-1]:
-        x += width
-        c.line(x, table_y, x, table_y - table_height)
+    # Now manually paint the color swatches
+    for i in range(1, 8):
+        r, g, b, _ = colors_dict[i-1]
+        dice_key_table._cellvalues[i][0] = ""  # Placeholder (reportlab won't let you embed colors directly)
+        dice_key_table.setStyle([
+            ('BACKGROUND', (0,i), (0,i), colors.Color(r/255, g/255, b/255)),
+        ])
 
-    # === Fill Header Row ===
-    headers = ["Color", "Dots (pips)", "Count"]
-    c.setFont("Helvetica-Bold", 10)
-    for i, text in enumerate(headers):
-        col_x = table_x + sum(col_widths[:i])
-        col_center = col_x + col_widths[i] / 2
-        text_y = table_y - row_height / 2 + 3
-        c.drawCentredString(col_center, text_y, text)
+    # Draw the table at a specific position
+    w, h = dice_key_table.wrapOn(c, page_width, page_height)
+    dice_key_table.drawOn(c, page_width - w - margin, page_height - margin - h)
+
 
     # === Fill Data Rows (Dice 0–6) ===
     c.setFont("Helvetica", 9)
