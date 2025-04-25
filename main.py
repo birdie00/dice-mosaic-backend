@@ -217,8 +217,8 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     # Style the table
     dice_key_table.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 0.5, rl_colors.black),
+        ('BACKGROUND', (0,0), (-1,0), rl_colors.lightgrey),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
         ('FONTSIZE', (0,0), (-1,0), 10),
