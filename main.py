@@ -152,7 +152,7 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 
 
-def generate_better_dice_pdf(filepath, grid, project_name, dice_dir):
+def generate_better_dice_pdf(filepath, grid, project_name):
     height = len(grid)
     width = len(grid[0])
     is_portrait = height >= width
@@ -161,18 +161,16 @@ def generate_better_dice_pdf(filepath, grid, project_name, dice_dir):
     page_width, page_height = pagesize
     margin = 40
 
-    # Define dice color key (for table coloring)
     colors = {
-        0: (0, 0, 0, rl_colors.white),
-        1: (255, 0, 0, rl_colors.white),
-        2: (0, 0, 255, rl_colors.white),
-        3: (0, 128, 0, rl_colors.white),
-        4: (255, 165, 0, rl_colors.black),
-        5: (255, 255, 0, rl_colors.black),
-        6: (255, 255, 255, rl_colors.black),
+        0: (0, 0, 0, white),
+        1: (255, 0, 0, white),
+        2: (0, 0, 255, white),
+        3: (0, 128, 0, white),
+        4: (255, 165, 0, black),
+        5: (255, 255, 0, black),
+        6: (255, 255, 255, black),
     }
 
-    # Calculate dice counts
     dice_counts = {i: 0 for i in range(7)}
     for row in grid:
         for val in row:
@@ -181,86 +179,118 @@ def generate_better_dice_pdf(filepath, grid, project_name, dice_dir):
     mid_x = width // 2
     mid_y = height // 2
 
-    # === PAGE 1 ===
+    # Page 1 Heading
     c.setFont("Helvetica-Bold", 22)
     c.drawCentredString(page_width / 2, page_height - margin, "Pipcasso Dice Map")
 
     section_y = page_height - margin - 40
     top_left_x = margin
+    top_right_x = page_width / 2 + 10
 
-    # Project Info
+    # Instructions and Project Info
     c.setFont("Helvetica-Bold", 14)
     c.drawString(top_left_x, section_y, "Project Info")
     c.setFont("Helvetica", 11)
     c.drawString(top_left_x, section_y - 20, f"Project Name: {project_name}")
     c.drawString(top_left_x, section_y - 40, f"Grid Size: {width} x {height}")
 
-    # Instructions
     c.setFont("Helvetica-Bold", 12)
     c.drawString(top_left_x, section_y - 70, "Instructions")
     c.setFont("Helvetica", 10)
     instructions = [
-        "• Each number represents a dice face (0–6).",
-        "• Build quadrant-by-quadrant for easier assembly.",
-        "• Pages 2–5 contain quadrant instructions.",
+        "1. Each number represents a dice face (0–6).",
+        "2. Dice color: 0:Black, 1:Red, 2:Blue, 3:Green, 4:Orange, 5:Yellow, 6:White",
+        "3. The mini-grid below shows quadrant zones.",
+        "4. Pages 2–5 contain detailed quadrant build instructions.",
     ]
     for i, line in enumerate(instructions):
         c.drawString(top_left_x, section_y - 90 - (i * 14), line)
 
-    # Draw Dice Preview
-    preview_size = 8  # size of each tiny dice image
-    preview_grid_width = width * preview_size
-    preview_grid_height = height * preview_size
-    preview_left = (page_width - preview_grid_width) / 2
-    preview_bottom = margin + 180  # enough space above dice table
+    # === Dice Map Key ===
+    table_x = page_width - margin - 180  # top-right alignment
+    table_y = page_height - margin - 10  # slight margin below top
+    col_widths = [50, 80, 50]  # columns: Color | Dots (pips) | Count
+    row_height = 18
+    num_rows = 8  # 1 header + 7 data rows
+    table_width = sum(col_widths)
+    table_height = row_height * num_rows
 
-    # Load dice images
-    dice_images = {}
+    # Draw title above the table
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColor(black)
+    c.drawString(table_x, table_y + 15, "Dice Map Key")
+
+    # Draw outer rectangle and grid
+    c.setStrokeColor(black)
+    c.rect(table_x, table_y - table_height, table_width, table_height, fill=0, stroke=1)
+
+    # Draw horizontal lines (rows)
+    for i in range(1, num_rows):
+        y = table_y - i * row_height
+        c.line(table_x, y, table_x + table_width, y)
+
+    # Draw vertical lines (columns)
+    x = table_x
+    for width in col_widths[:-1]:
+        x += width
+        c.line(x, table_y, x, table_y - table_height)
+
+    # === Fill Header Row ===
+    headers = ["Color", "Dots (pips)", "Count"]
+    c.setFont("Helvetica-Bold", 10)
+    for i, text in enumerate(headers):
+        col_x = table_x + sum(col_widths[:i])
+        col_center = col_x + col_widths[i] / 2
+        text_y = table_y - row_height / 2 + 3
+        c.drawCentredString(col_center, text_y, text)
+
+    # === Fill Data Rows (Dice 0–6) ===
+    c.setFont("Helvetica", 9)
     for i in range(7):
-        dice_path = os.path.join(dice_dir, f"dice_{i}.png")
-        if os.path.exists(dice_path):
-            dice_images[i] = Image.open(dice_path).resize((preview_size, preview_size))
+        row_top_y = table_y - (i + 1) * row_height
+        cell_center_y = row_top_y + row_height / 2 - 1
 
-    for y, row in enumerate(grid):
-        for x, val in enumerate(row):
-            if val in dice_images:
-                dice_img_path = os.path.join(dice_dir, f"dice_{val}.png")
-                c.drawImage(
-                    dice_img_path,
-                    preview_left + x * preview_size,
-                    preview_bottom + (height - y - 1) * preview_size,
-                    width=preview_size,
-                    height=preview_size,
-                    preserveAspectRatio=True,
-                    mask='auto'
-                )
+        # Column 1: Color swatch centered in cell
+        swatch_w, swatch_h = 20, 10
+        swatch_x = table_x + (col_widths[0] - swatch_w) / 2
+        swatch_y = cell_center_y - swatch_h / 2
+        r, g, b, _ = colors[i]
+        c.setFillColorRGB(r / 255, g / 255, b / 255)
+        c.rect(swatch_x, swatch_y, swatch_w, swatch_h, fill=1, stroke=1)
 
-    # === Dice Map Key Table ===
-    data = [["Color", "Dice Face", "Count"]]
-    for i in range(7):
-        data.append(["", f"{i}", str(dice_counts[i])])
+        # Column 2: Dots label
+        dots_label = f"{i} face"
+        dots_center_x = table_x + col_widths[0] + col_widths[1] / 2
+        c.setFillColor(black)
+        c.drawCentredString(dots_center_x, cell_center_y - 1, dots_label)
 
-    dice_key_table = Table(data, colWidths=[40, 80, 50])
-    dice_key_table.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 0.5, rl_colors.black),
-        ('BACKGROUND', (0,0), (-1,0), rl_colors.lightgrey),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 10),
-        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-        ('FONTSIZE', (0,1), (-1,-1), 9),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ]))
+        # Column 3: Count value
+        count_label = str(dice_counts[i])
+        count_center_x = table_x + col_widths[0] + col_widths[1] + col_widths[2] / 2
+        c.drawCentredString(count_center_x, cell_center_y - 1, count_label)
 
-    for i in range(1, 8):
-        r, g, b, _ = colors[i-1]
-        dice_key_table.setStyle([
-            ('BACKGROUND', (0,i), (0,i), rl_colors.Color(r/255, g/255, b/255))
-        ])
 
-    w, h = dice_key_table.wrapOn(c, page_width, page_height)
-    dice_key_table.drawOn(c, page_width - w - margin, preview_bottom - h - 20)
 
+    # Mosaic Preview
+    preview_y = margin + 20
+    grid_width_px = page_width - 2 * margin
+    grid_height_px = (page_height - 2 * margin) * 0.4
+    cell_size = min(grid_width_px / width, grid_height_px / height)
+    preview_x = (page_width - (cell_size * width)) / 2
+
+    c.saveState()
+    c.translate(preview_x, preview_y)
+    for y in range(height):
+        for x in range(width):
+            val = grid[y][x]
+            r, g_, b, _ = colors[val]
+            px = x * cell_size
+            py = (height - y - 1) * cell_size
+            c.setFillColorRGB(r / 255, g_ / 255, b / 255)
+            c.setStrokeColor(gray)
+            c.setLineWidth(0.2)
+            c.rect(px, py, cell_size, cell_size, fill=1, stroke=1)
+    c.restoreState()
     c.showPage()
 
     # Quadrants (Pages 2-5)
