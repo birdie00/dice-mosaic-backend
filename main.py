@@ -149,87 +149,92 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 
 def generate_better_dice_pdf(filepath, grid, project_name):
-    from reportlab.lib.pagesizes import letter, landscape, portrait
-    from reportlab.lib.colors import black, gray, white
     from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.colors import black, white
+    from reportlab.lib.units import inch
 
-    height = len(grid)
     width = len(grid[0])
-    is_portrait = height >= width
-    pagesize = portrait(letter) if is_portrait else landscape(letter)
-    c = canvas.Canvas(filepath, pagesize=pagesize)
-    page_width, page_height = pagesize
-    margin = 40
+    height = len(grid)
+    page_width, page_height = letter
+    c = canvas.Canvas(filepath, pagesize=letter)
 
-    # Define colors and dice counts
-    colors = {
-        0: (0, 0, 0, white),
-        1: (255, 0, 0, white),
-        2: (0, 0, 255, white),
-        3: (0, 128, 0, white),
-        4: (255, 165, 0, black),
-        5: (255, 255, 0, black),
-        6: (255, 255, 255, black),
+    dice_colors = {
+        0: ("Black", 0, black, white),
+        1: ("Red", 1, (1, 0, 0), white),
+        2: ("Blue", 2, (0, 0, 1), white),
+        3: ("Orange", 3, (1, 0.5, 0), black),
+        4: ("Green", 4, (0, 0.5, 0), white),
+        5: ("Yellow", 5, (1, 1, 0), black),
+        6: ("White", 6, white, black),
     }
-    dice_counts = {i: 0 for i in range(7)}
+
+    # Count dice
+    counts = {i: 0 for i in range(7)}
     for row in grid:
         for val in row:
-            dice_counts[val] += 1
+            counts[val] += 1
 
-    # Draw Title
-    c.setFont("Helvetica-Bold", 22)
-    c.setFillColor(black)
-    c.drawCentredString(page_width / 2, page_height - margin, "Pipcasso Dice Map")
+    def draw_header():
+        c.setFont("Helvetica-Bold", 18)
+        c.drawCentredString(page_width / 2, page_height - 50, f"Dice Ideas Artwork Schematic for '{project_name}'")
 
-    # Project Info Section
-    section_y = page_height - margin - 40
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(margin, section_y, "Project Info")
-    c.setFont("Helvetica", 11)
-    c.drawString(margin, section_y - 20, f"Project Name: {project_name}")
-    c.drawString(margin, section_y - 40, f"Grid Size: {width} x {height}")
+        c.setFont("Helvetica", 12)
+        c.drawString(50, page_height - 80, f"Project: {project_name}")
+        c.drawString(50, page_height - 100, f"Dimensions: {width} W x {height} H")
+        c.drawString(50, page_height - 120, "Instructions: Match the numbers on this blueprint design to the corresponding dice")
+        c.drawString(50, page_height - 135, "faces to create your custom dice piece. Blank sided (0 Face) dice are created by using")
+        c.drawString(50, page_height - 150, "a black sharpie (or similar) to colour in the 1 side of the dice.")
 
-    # Instructions Section
-    c.setFont("Helvetica-Bold", 12)
-    instructions_y = section_y - 70
-    c.drawString(margin, instructions_y, "Instructions")
-    c.setFont("Helvetica", 10)
-    instructions = [
-        "1. Each number represents a dice face (0–6).",
-        "2. Dice color: 0:Black, 1:Red, 2:Blue, 3:Green, 4:Orange, 5:Yellow, 6:White",
-        "3. The grid below shows the dice arrangement.",
-        "4. Use quadrant details for precise placement.",
-    ]
-    for i, line in enumerate(instructions):
-        c.drawString(margin, instructions_y - (i + 1) * 14, line)
+    def draw_key():
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, page_height - 180, "Key")
+        c.setFont("Helvetica", 10)
+        c.drawString(50, page_height - 195, "Colour     Dice     Count")
 
-    # Dice Map Key
-    table_x = page_width - margin - 200
-    table_y = instructions_y
-    col_widths = [50, 80, 50]
-    row_height = 18
-    num_rows = 8
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(table_x, table_y + 15, "Dice Map Key")
-    c.rect(table_x, table_y - row_height * num_rows, sum(col_widths), row_height * num_rows, stroke=1, fill=0)
-    headers = ["Color", "Dots", "Count"]
-    c.setFont("Helvetica-Bold", 10)
-    for i, header in enumerate(headers):
-        col_x = table_x + sum(col_widths[:i])
-        c.drawString(col_x + col_widths[i] / 2 - 10, table_y, header)
-    c.setFont("Helvetica", 9)
-    for i in range(7):
-        color = colors[i]
-        row_top = table_y - (i + 1) * row_height
-        c.setFillColorRGB(color[0] / 255, color[1] / 255, color[2] / 255)
-        c.rect(table_x, row_top, col_widths[0], row_height, fill=1)
-        c.setFillColor(black)
-        c.drawString(table_x + col_widths[0] / 2 - 10, row_top + 5, str(i))
-        c.drawString(table_x + col_widths[1] / 2 + 20, row_top + 5, f"{i} dots")
-        c.drawString(table_x + sum(col_widths[:2]) + col_widths[2] / 2 - 10, row_top + 5, str(dice_counts[i]))
+        y = page_height - 210
+        for i in range(7):
+            label, face, rgb, text_color = dice_colors[i]
+            c.setFillColorRGB(*rgb if isinstance(rgb, tuple) else (0, 0, 0))
+            c.rect(50, y - 10, 10, 10, fill=1)
+            c.setFillColor(black)
+            c.drawString(65, y, f"{label:<10} {face} face   {counts[i]}")
+            y -= 15
+
+    def draw_grid(start_row):
+        cell_size = 10
+        max_rows = 45  # adjust to fit page
+        end_row = min(start_row + max_rows, height)
+        grid_y_start = page_height - 260
+
+        # Draw column headers
+        c.setFont("Helvetica", 6)
+        for col in range(width):
+            col_label = f"C{col + 1}"
+            c.drawString(50 + col * cell_size, grid_y_start + 10, col_label)
+
+        for y_idx, row in enumerate(grid[start_row:end_row]):
+            row_label = f"R{start_row + y_idx + 1}"
+            c.drawString(35, grid_y_start - y_idx * cell_size, row_label)
+
+            for x, val in enumerate(row):
+                c.drawString(50 + x * cell_size, grid_y_start - y_idx * cell_size, str(val))
+
+        return end_row
+
+    draw_header()
+    draw_key()
+    current_row = 0
+    while current_row < height:
+        current_row = draw_grid(current_row)
+        if current_row < height:
+            c.showPage()
+            draw_header()
+            draw_key()
 
     c.showPage()
     c.save()
+
 
 
 @app.post("/generate-pdf")
