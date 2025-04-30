@@ -148,13 +148,14 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 
 
-def generate_better_dice_pdf(filepath, grid, project_name):
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.lib.units import inch
-    from reportlab.lib.colors import Color, black, white
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib.units import inch
+from reportlab.lib.colors import Color, black, white
+import os
 
-    # Setup
+def generate_final_dice_pdf(filepath, grid, project_name):
+    # Page setup
     page_width, page_height = landscape(letter)
     margin = 0.25 * inch
     usable_width = page_width - 2 * margin
@@ -163,11 +164,9 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     rows = len(grid)
     cols = len(grid[0])
+    split_row = rows // 2  # divide grid across 2 pages
 
-    # Grid split for 2 pages
-    split_row = rows // 2
-
-    # Colors: background, text
+    # Color mapping: (bg_color, text_color)
     color_map = {
         0: (Color(0, 0, 0), white),
         1: (Color(1, 0, 0), white),
@@ -205,15 +204,17 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             c.drawString(margin + 15, y - 1, f"{['Black','Red','Blue','Orange','Green','Yellow','White'][val]:<7} {val} face   {dice_counts[val]}")
             y -= 12
 
-    def draw_grid(start_row, end_row):
-        c.setFont("Courier", 6)
-        cell_size = min(usable_width / (cols + 1), usable_height / (end_row - start_row + 2))
+    def draw_grid(start_row, end_row, draw_headers=True):
+        c.setFont("Courier-Bold", 6)
+        grid_height = usable_height - 140 if draw_headers else usable_height - 30
+        cell_size = min(usable_width / (cols + 1), grid_height / (end_row - start_row + 1))
         start_x = margin + cell_size
-        start_y = page_height - margin - 90
+        start_y = page_height - margin - (90 if draw_headers else 20)
 
-        # Column labels
-        for col in range(cols):
-            c.drawCentredString(start_x + col * cell_size + cell_size / 2, start_y, f"C{col+1}")
+        # Column headers
+        if draw_headers:
+            for col in range(cols):
+                c.drawCentredString(start_x + col * cell_size + cell_size / 2, start_y + 4, f"C{col+1}")
 
         # Grid cells
         for row in range(start_row, end_row):
@@ -222,22 +223,42 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             for col in range(cols):
                 val = grid[row][col]
                 bg, fg = color_map[val]
+                x = start_x + col * cell_size
                 c.setFillColor(bg)
-                c.rect(start_x + col * cell_size, y, cell_size, cell_size, fill=1, stroke=1)
+                c.rect(x, y, cell_size, cell_size, fill=1, stroke=1)
                 c.setFillColor(fg)
-                c.drawCentredString(start_x + col * cell_size + cell_size / 2, y + cell_size / 4, str(val))
+                c.drawCentredString(x + cell_size / 2, y + cell_size / 4, str(val))
 
-    # First Page
+        # Outer border
+        c.setStrokeColor(black)
+        c.setLineWidth(1.2)
+        c.rect(start_x, start_y - (end_row - start_row) * cell_size, cols * cell_size, (end_row - start_row) * cell_size)
+
+    # Page 1
     draw_header()
     draw_key(page_height - margin - 80)
-    draw_grid(0, split_row)
+    draw_grid(0, split_row, draw_headers=True)
     c.showPage()
 
-    # Second Page
-    draw_header()
-    draw_key(page_height - margin - 80)
-    draw_grid(split_row, rows)
+    # Page 2 (no header or key)
+    draw_grid(split_row, rows, draw_headers=False)
     c.save()
+
+    return filepath
+
+# Example test file output path
+output_path = "/mnt/data/final_dice_map_output.pdf"
+
+# Dummy test grid
+import numpy as np
+np.random.seed(0)
+dummy_grid = np.random.randint(0, 7, size=(100, 100)).tolist()
+
+# Call function
+generate_final_dice_pdf(output_path, dummy_grid, "Test Project")
+
+output_path
+
 
 
 
