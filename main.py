@@ -154,7 +154,6 @@ from reportlab.lib.colors import Color, black, white, lightgrey
 import numpy as np
 
 def generate_better_dice_pdf(filepath, grid, project_name):
-    # PDF setup
     page_width, page_height = landscape(letter)
     margin = 0.25 * inch
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
@@ -162,7 +161,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     rows, cols = len(grid), len(grid[0])
     half_rows = rows // 2
 
-    # Dice color map: (background, text)
     color_map = {
         0: (Color(0, 0, 0), white),
         1: (Color(1, 0, 0), white),
@@ -176,7 +174,6 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     def draw_header_and_key():
         c.setFont("Helvetica-Bold", 18)
         c.drawCentredString(page_width / 2, page_height - margin, f"Dice Ideas Artwork Schematic for '{project_name}'")
-
         c.setFont("Helvetica", 10)
         top = page_height - margin - 20
         c.drawString(margin, top, f"Project: {project_name}")
@@ -184,99 +181,81 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.drawString(margin, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
         c.drawString(margin, top - 45, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
 
-        # Draw key as a table
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(margin, top - 65, "Key:")
-        c.setFont("Helvetica", 9)
-        y = top - 80
+        y = top - 75
         x = margin
         row_height = 14
-        col_widths = [50, 50, 70]
+        col_widths = [60, 50, 70]
         headers = ["Color", "Dice", "Count"]
-
-        # Table headers
-        for i, text in enumerate(headers):
-            c.rect(x, y - row_height, col_widths[i], row_height, stroke=1, fill=1)
+        c.setFont("Helvetica-Bold", 9)
+        for i, header in enumerate(headers):
+            c.setFillColor(lightgrey)
+            c.rect(x, y, col_widths[i], row_height, stroke=1, fill=1)
             c.setFillColor(black)
-            c.drawCentredString(x + col_widths[i]/2, y - row_height + 4, text)
+            c.drawCentredString(x + col_widths[i] / 2, y + 3, header)
             x += col_widths[i]
 
-        # Table rows
         y -= row_height
+        c.setFont("Helvetica", 8)
         for i in range(7):
             x = margin
             bg, _ = color_map[i]
             label = ["Black", "Red", "Blue", "Orange", "Green", "Yellow", "White"][i]
             count = sum(row.count(i) for row in grid)
-            row_data = [label, f"{i} face", f"{count}"]
-
-            for j, text in enumerate(row_data):
+            entries = [label, f"{i} face", f"{count}"]
+            for j, text in enumerate(entries):
                 c.setFillColor(bg if j == 0 else white)
-                c.rect(x, y - row_height, col_widths[j], row_height, stroke=1, fill=1)
+                c.rect(x, y, col_widths[j], row_height, stroke=1, fill=1)
                 c.setFillColor(white if j == 0 else black)
-                c.drawCentredString(x + col_widths[j]/2, y - row_height + 4, text)
+                c.drawCentredString(x + col_widths[j]/2, y + 3, text)
                 x += col_widths[j]
             y -= row_height
         return y - 10
 
     def draw_grid(start_row, end_row, start_y, include_headers):
-        c.setFont("Helvetica-Bold", 6)
         max_grid_height = start_y - margin
-        cell_size = min((page_width - 2 * margin) / (cols + 2), max_grid_height / (end_row - start_row + 2))
-        x0 = margin + cell_size
-        y0 = start_y - cell_size
+        cell_size = min((page_width - 2 * margin) / (cols + 1), max_grid_height / (end_row - start_row + 1))
+        start_x = margin + cell_size
+        start_y = start_y
+
+        label_font_size = 5
+        number_font_size = 6
 
         if include_headers:
+            c.setFont("Helvetica", label_font_size)
             for col in range(cols):
-                x = x0 + col * cell_size
+                x = start_x + col * cell_size
                 c.setFillColor(lightgrey)
-                c.rect(x, y0 + cell_size, cell_size, cell_size, fill=1, stroke=1)
+                c.rect(x, start_y, cell_size, cell_size, fill=1, stroke=1)
                 c.setFillColor(black)
-                c.drawCentredString(x + cell_size / 2, y0 + cell_size + 2, f"C{col+1}")
+                c.drawCentredString(x + cell_size / 2, start_y + 2, f"C{col+1}")
 
         for row_idx in range(start_row, end_row):
-            y = y0 - (row_idx - start_row) * cell_size
-            # Row header
+            y = start_y - ((row_idx - start_row + 1) * cell_size)
             c.setFillColor(lightgrey)
-            c.rect(x0 - cell_size, y, cell_size, cell_size, fill=1, stroke=1)
+            c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
             c.setFillColor(black)
-            c.drawCentredString(x0 - cell_size/2, y + cell_size / 4, f"R{row_idx+1}")
+            c.setFont("Helvetica", label_font_size)
+            c.drawCentredString(margin + cell_size / 2, y + 2, f"R{row_idx+1}")
 
             for col in range(cols):
                 val = grid[row_idx][col]
                 bg, fg = color_map[val]
-                x = x0 + col * cell_size
+                x = start_x + col * cell_size
                 c.setFillColor(bg)
                 c.rect(x, y, cell_size, cell_size, fill=1, stroke=1)
                 c.setFillColor(fg)
-                c.setFont("Helvetica-Bold", 6)
-                c.drawCentredString(x + cell_size / 2, y + cell_size / 4, str(val))
+                c.setFont("Helvetica", number_font_size)
+                c.drawCentredString(x + cell_size / 2, y + 2, str(val))
 
-        # Outer white border
-        grid_height = (end_row - start_row) * cell_size
-        c.setStrokeColor(white)
-        c.setLineWidth(1.2)
-        c.rect(x0, y0 - (end_row - start_row - 1) * cell_size, cols * cell_size, grid_height)
-
-        # Row/Column label border
-        c.setStrokeColor(black)
-        c.setLineWidth(1)
-        for row_idx in range(start_row, end_row):
-            y = y0 - (row_idx - start_row) * cell_size
-            c.rect(x0 - cell_size, y, cell_size, cell_size, fill=0)
-        if include_headers:
-            for col in range(cols):
-                x = x0 + col * cell_size
-                c.rect(x, y0 + cell_size, cell_size, cell_size, fill=0)
-
-    # PAGE 1
+    # Page 1
     bottom_y = draw_header_and_key()
     draw_grid(0, half_rows, bottom_y, include_headers=True)
     c.showPage()
 
-    # PAGE 2
+    # Page 2
     draw_grid(half_rows, rows, page_height - margin, include_headers=False)
     c.save()
+
 
 
 
