@@ -189,7 +189,9 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.drawString(text_x, top, f"Project: {project_name}")
         c.drawString(text_x, top - 15, f"Dimensions: {cols} W x {rows} H")
         c.drawString(text_x, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
-        c.drawString(text_x, top - 45, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
+        c.drawString(text_x, top - 45, "2's and 3's should be arranged with dots going diagonally from bottom left to top right.")
+        c.drawString(text_x, top - 60, "6's should be arranged with dots aligned vertical.")
+        c.drawString(text_x, top - 75, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
 
         # Dice key
         y = top
