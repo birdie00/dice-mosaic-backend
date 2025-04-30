@@ -12,7 +12,6 @@ from reportlab.lib.colors import black, white, gray
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib import colors as rl_colors
 from reportlab.lib.units import mm
-from reportlab.lib.units import inch
 import numpy as np
 import os
 import cv2
@@ -149,6 +148,11 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 
 def generate_better_dice_pdf(filepath, grid, project_name):
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.colors import Color, black, white, lightgrey
+    from reportlab.lib.units import inch
+
     page_width, page_height = landscape(letter)
     margin = 0.25 * inch
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
@@ -168,9 +172,9 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     grid_start_x = margin + cell_size
     label_font_size = 4.5
     number_font_size = 6
-    header_height = 190  # reserved space for title and key
+    header_height = 190  # reserved for title + key
     available_height = page_height - header_height - margin
-    rows_per_page = int(available_height // cell_size)
+    rows_per_page = int((available_height - cell_size) // cell_size)  # subtract one row for column headers
 
     def draw_header_and_key():
         c.setFont("Helvetica-Bold", 18)
@@ -227,9 +231,10 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         y_origin = start_y
         if include_headers:
             draw_column_headers(y_origin)
+            y_origin -= cell_size  # move grid down to allow for column headers
 
         for row_idx in range(start_row, end_row):
-            y = y_origin - ((row_idx - start_row + 1) * cell_size)
+            y = y_origin - ((row_idx - start_row) * cell_size)
             c.setFillColor(lightgrey)
             c.setStrokeColor(black)
             c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
@@ -264,6 +269,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         if current_row < rows:
             c.showPage()
     c.save()
+
 
 
 @app.post("/generate-pdf")
