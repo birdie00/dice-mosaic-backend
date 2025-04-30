@@ -159,7 +159,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     margin = 0.25 * inch
     c = canvas.Canvas(filepath, pagesize=page_size)
 
-    # Colors
+    # Color mapping
     color_map = {
         0: (Color(0, 0, 0), white),
         1: (Color(1, 0, 0), white),
@@ -170,51 +170,55 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (Color(1, 1, 1), black),
     }
 
-    cell_size = min((page_width - 2 * margin) / (cols + 1), (page_height - 3 * inch) / ((rows // 2) + 2), 10)
+    # Layout calculations
+    cell_size = min((page_width - 2 * margin) / (cols + 1), (page_height - 2.25 * inch) / ((rows // 2) + 2), 10)
     grid_start_x = margin + cell_size
     label_font_size = 3.5
-    number_font_size = 6
+    number_font_size = 5.2  # reduced for better fit
 
     def draw_header_and_key():
+        text_x = margin
+        key_x = page_width * 0.6
         c.setFont("Helvetica-Bold", 18)
         c.drawCentredString(page_width / 2, page_height - margin, f"Pipcasso Dice Map for '{project_name}'")
         c.setFont("Helvetica", 10)
         top = page_height - margin - 20
-        c.drawString(margin, top, f"Project: {project_name}")
-        c.drawString(margin, top - 15, f"Dimensions: {cols} W x {rows} H")
-        c.drawString(margin, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
-        c.drawString(margin, top - 45, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
+        c.drawString(text_x, top, f"Project: {project_name}")
+        c.drawString(text_x, top - 15, f"Dimensions: {cols} W x {rows} H")
+        c.drawString(text_x, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
+        c.drawString(text_x, top - 45, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
 
-        y = top - 75
-        x = margin
-        row_height = 14
-        col_widths = [60, 50, 70]
+        # Key on the right
+        y = top
+        row_height = 12
+        col_widths = [50, 35, 50]
         headers = ["Color", "Dice", "Count"]
         c.setFont("Helvetica-Bold", 9)
+        x = key_x
         for i, header in enumerate(headers):
             c.setFillColor(lightgrey)
-            c.rect(x, y, col_widths[i], row_height, stroke=1, fill=1)
+            c.rect(x, y - row_height, col_widths[i], row_height, stroke=1, fill=1)
             c.setFillColor(black)
-            c.drawCentredString(x + col_widths[i] / 2, y + 3, header)
+            c.drawCentredString(x + col_widths[i]/2, y - row_height + 3, header)
             x += col_widths[i]
 
         y -= row_height
         c.setFont("Helvetica", 8)
         for i in range(7):
-            x = margin
-            bg, fg = color_map[i]
+            x = key_x
+            bg, _ = color_map[i]
             label = ["Black", "Red", "Blue", "Orange", "Green", "Yellow", "White"][i]
             count = sum(row.count(i) for row in grid)
             entries = [label, f"{i} face", f"{count}"]
             for j, text in enumerate(entries):
                 c.setFillColor(bg if j == 0 else white)
-                c.rect(x, y, col_widths[j], row_height, stroke=1, fill=1)
-                adjusted_fg = black if (i in [5, 6] and j == 0) else (white if j == 0 else black)
-                c.setFillColor(adjusted_fg)
-                c.drawCentredString(x + col_widths[j]/2, y + 3, text)
+                c.rect(x, y - row_height, col_widths[j], row_height, stroke=1, fill=1)
+                text_color = black if (i in [5, 6] and j == 0) else (white if j == 0 else black)
+                c.setFillColor(text_color)
+                c.drawCentredString(x + col_widths[j]/2, y - row_height + 3, text)
                 x += col_widths[j]
             y -= row_height
-        return y - 10  # bottom Y for grid start
+        return y - 10
 
     def draw_column_headers(start_y):
         c.setFont("Helvetica", label_font_size)
@@ -224,21 +228,19 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             c.setStrokeColor(black)
             c.rect(x, start_y, cell_size, cell_size, fill=1, stroke=1)
             c.setFillColor(black)
-            c.drawCentredString(x + cell_size / 2, start_y + 1.5, f"C{col+1}")
+            c.drawCentredString(x + cell_size / 2, start_y + cell_size * 0.3, f"C{col+1}")
 
-    def draw_grid(grid, start_row, end_row, start_y):
+    def draw_grid(start_row, end_row, start_y):
         draw_column_headers(start_y)
         y_origin = start_y - cell_size
-
         for row_idx in range(start_row, end_row):
             y = y_origin - ((row_idx - start_row) * cell_size)
-            # Row label
             c.setFillColor(lightgrey)
             c.setStrokeColor(black)
             c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
             c.setFillColor(black)
             c.setFont("Helvetica", label_font_size)
-            c.drawCentredString(margin + cell_size / 2, y + 1.5, f"R{row_idx+1}")
+            c.drawCentredString(margin + cell_size / 2, y + cell_size * 0.3, f"R{row_idx+1}")
 
             for col in range(cols):
                 val = grid[row_idx][col]
@@ -251,18 +253,17 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 c.rect(x, y, cell_size, cell_size, fill=0, stroke=1)
                 c.setFillColor(fg)
                 c.setFont("Helvetica", number_font_size)
-                c.drawCentredString(x + cell_size / 2, y + 2, str(val))
+                c.drawCentredString(x + cell_size / 2, y + cell_size * 0.3, str(val))
 
-    # Page 1: Header + Grid Top Half
+    # Page 1
     bottom_y = draw_header_and_key()
     half = rows // 2
-    draw_grid(grid, 0, half, bottom_y)
+    draw_grid(0, half, bottom_y)
     c.showPage()
 
-    # Page 2: Grid Bottom Half (same layout, no header)
-    draw_grid(grid, half, rows, page_height - margin)
+    # Page 2
+    draw_grid(half, rows, page_height - margin)
     c.save()
-
 
 @app.post("/generate-pdf")
 async def generate_dice_map_pdf(grid_data: GridRequest):
