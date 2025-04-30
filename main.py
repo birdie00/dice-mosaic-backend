@@ -148,16 +148,15 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 def generate_better_dice_pdf(filepath, grid, project_name):
     from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import landscape, letter, portrait
+    from reportlab.lib.pagesizes import landscape, letter
     from reportlab.lib.colors import Color, black, white, lightgrey
     from reportlab.lib.units import inch
 
     rows, cols = len(grid), len(grid[0])
-    use_portrait = cols > 100
-    page_size = portrait(letter) if use_portrait else landscape(letter)
-    page_width, page_height = page_size
+    rotate_grid = rows < cols and cols > 100  # conditionally rotate grid only
+    page_width, page_height = landscape(letter)
     margin = 0.25 * inch
-    c = canvas.Canvas(filepath, pagesize=page_size)
+    c = canvas.Canvas(filepath, pagesize=(page_width, page_height))
 
     # Color mapping
     color_map = {
@@ -170,11 +169,15 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (Color(1, 1, 1), black),
     }
 
-    # Layout calculations
+    # If rotating, transpose the grid
+    if rotate_grid:
+        grid = list(map(list, zip(*grid)))  # transpose: flip rows and columns
+        rows, cols = len(grid), len(grid[0])
+
     cell_size = min((page_width - 2 * margin) / (cols + 1), (page_height - 2.25 * inch) / ((rows // 2) + 2), 10)
     grid_start_x = margin + cell_size
     label_font_size = 3.5
-    number_font_size = 5.2  # reduced for better fit
+    number_font_size = 5.2
 
     def draw_header_and_key():
         text_x = margin
@@ -188,7 +191,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.drawString(text_x, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
         c.drawString(text_x, top - 45, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
 
-        # Key on the right
+        # Dice key
         y = top
         row_height = 12
         col_widths = [50, 35, 50]
