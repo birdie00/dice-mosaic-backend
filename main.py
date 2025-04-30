@@ -12,6 +12,7 @@ from reportlab.lib.colors import black, white, gray
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib import colors as rl_colors
 from reportlab.lib.units import mm
+from reportlab.lib.units import inch
 import numpy as np
 import os
 import cv2
