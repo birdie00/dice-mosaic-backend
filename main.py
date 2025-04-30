@@ -146,18 +146,20 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
-
 def generate_better_dice_pdf(filepath, grid, project_name):
     from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.pagesizes import landscape, letter, portrait
     from reportlab.lib.colors import Color, black, white, lightgrey
     from reportlab.lib.units import inch
 
-    page_width, page_height = landscape(letter)
-    margin = 0.25 * inch
-    c = canvas.Canvas(filepath, pagesize=landscape(letter))
-
     rows, cols = len(grid), len(grid[0])
+    use_portrait = cols > 100
+    page_size = portrait(letter) if use_portrait else landscape(letter)
+    page_width, page_height = page_size
+    margin = 0.25 * inch
+    c = canvas.Canvas(filepath, pagesize=page_size)
+
+    # Colors
     color_map = {
         0: (Color(0, 0, 0), white),
         1: (Color(1, 0, 0), white),
@@ -168,13 +170,10 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (Color(1, 1, 1), black),
     }
 
-    cell_size = min((page_width - 2 * margin) / (cols + 1), 10)
+    cell_size = min((page_width - 2 * margin) / (cols + 1), (page_height - 3 * inch) / ((rows // 2) + 2), 10)
     grid_start_x = margin + cell_size
-    label_font_size = 4.5
+    label_font_size = 3.5
     number_font_size = 6
-    header_height = 190  # reserved for title + key
-    available_height = page_height - header_height - margin
-    rows_per_page = int((available_height - cell_size) // cell_size)  # subtract one row for column headers
 
     def draw_header_and_key():
         c.setFont("Helvetica-Bold", 18)
@@ -215,7 +214,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 c.drawCentredString(x + col_widths[j]/2, y + 3, text)
                 x += col_widths[j]
             y -= row_height
-        return y - 10
+        return y - 10  # bottom Y for grid start
 
     def draw_column_headers(start_y):
         c.setFont("Helvetica", label_font_size)
@@ -227,14 +226,13 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             c.setFillColor(black)
             c.drawCentredString(x + cell_size / 2, start_y + 1.5, f"C{col+1}")
 
-    def draw_grid(start_row, end_row, start_y, include_headers):
-        y_origin = start_y
-        if include_headers:
-            draw_column_headers(y_origin)
-            y_origin -= cell_size  # move grid down to allow for column headers
+    def draw_grid(grid, start_row, end_row, start_y):
+        draw_column_headers(start_y)
+        y_origin = start_y - cell_size
 
         for row_idx in range(start_row, end_row):
             y = y_origin - ((row_idx - start_row) * cell_size)
+            # Row label
             c.setFillColor(lightgrey)
             c.setStrokeColor(black)
             c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
@@ -255,21 +253,15 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 c.setFont("Helvetica", number_font_size)
                 c.drawCentredString(x + cell_size / 2, y + 2, str(val))
 
-    current_row = 0
-    page_num = 0
-    while current_row < rows:
-        if page_num == 0:
-            bottom_y = draw_header_and_key()
-        else:
-            bottom_y = page_height - margin
-        end_row = min(current_row + rows_per_page, rows)
-        draw_grid(current_row, end_row, bottom_y, include_headers=True)
-        current_row = end_row
-        page_num += 1
-        if current_row < rows:
-            c.showPage()
-    c.save()
+    # Page 1: Header + Grid Top Half
+    bottom_y = draw_header_and_key()
+    half = rows // 2
+    draw_grid(grid, 0, half, bottom_y)
+    c.showPage()
 
+    # Page 2: Grid Bottom Half (same layout, no header)
+    draw_grid(grid, half, rows, page_height - margin)
+    c.save()
 
 
 @app.post("/generate-pdf")
