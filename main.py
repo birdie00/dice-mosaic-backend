@@ -152,21 +152,18 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
 from reportlab.lib.colors import Color, black, white
-import os
+import numpy as np
 
-def generate_final_dice_pdf(filepath, grid, project_name):
-    # Page setup
+def generate_better_dice_pdf(filepath, grid, project_name):
+    # PDF setup
     page_width, page_height = landscape(letter)
     margin = 0.25 * inch
-    usable_width = page_width - 2 * margin
-    usable_height = page_height - 2 * margin
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
 
-    rows = len(grid)
-    cols = len(grid[0])
-    split_row = rows // 2  # divide grid across 2 pages
+    rows, cols = len(grid), len(grid[0])
+    half_rows = rows // 2
 
-    # Color mapping: (bg_color, text_color)
+    # Dice color map: (background, text)
     color_map = {
         0: (Color(0, 0, 0), white),
         1: (Color(1, 0, 0), white),
@@ -177,87 +174,68 @@ def generate_final_dice_pdf(filepath, grid, project_name):
         6: (Color(1, 1, 1), black),
     }
 
-    def draw_header():
+    def draw_header_and_key():
         c.setFont("Helvetica-Bold", 18)
-        c.drawCentredString(page_width / 2, page_height - margin / 2, f"Dice Ideas Artwork Schematic for '{project_name}'")
+        c.drawCentredString(page_width / 2, page_height - margin, f"Dice Ideas Artwork Schematic for '{project_name}'")
 
         c.setFont("Helvetica", 10)
-        c.drawString(margin, page_height - margin - 15, f"Project: {project_name}")
-        c.drawString(margin, page_height - margin - 30, f"Dimensions: {cols} W x {rows} H")
-        c.drawString(margin, page_height - margin - 45, "Instructions: Match the numbers on this blueprint to the dice faces.")
-        c.drawString(margin, page_height - margin - 60, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
+        top = page_height - margin - 20
+        c.drawString(margin, top, f"Project: {project_name}")
+        c.drawString(margin, top - 15, f"Dimensions: {cols} W x {rows} H")
+        c.drawString(margin, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
+        c.drawString(margin, top - 45, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
 
-    def draw_key(y_start):
         c.setFont("Helvetica-Bold", 10)
-        c.drawString(margin, y_start, "Key:")
+        c.drawString(margin, top - 65, "Key:")
         c.setFont("Helvetica", 9)
-        dice_counts = {i: 0 for i in range(7)}
-        for row in grid:
-            for val in row:
-                dice_counts[val] += 1
-        y = y_start - 12
-        for val in range(7):
-            bg, fg = color_map[val]
+        y = top - 80
+        counts = {i: sum(row.count(i) for row in grid) for i in range(7)}
+        for i in range(7):
+            bg, _ = color_map[i]
             c.setFillColor(bg)
-            c.rect(margin, y - 10, 10, 10, fill=1, stroke=1)
+            c.rect(margin, y - 2, 10, 10, fill=1, stroke=1)
             c.setFillColor(black)
-            c.drawString(margin + 15, y - 1, f"{['Black','Red','Blue','Orange','Green','Yellow','White'][val]:<7} {val} face   {dice_counts[val]}")
+            c.drawString(margin + 15, y, f"{['Black','Red','Blue','Orange','Green','Yellow','White'][i]:<7} {i} face   {counts[i]}")
             y -= 12
+        return y - 10  # bottom y position after key
 
-    def draw_grid(start_row, end_row, draw_headers=True):
+    def draw_grid(start_row, end_row, start_y, include_headers):
         c.setFont("Courier-Bold", 6)
-        grid_height = usable_height - 140 if draw_headers else usable_height - 30
-        cell_size = min(usable_width / (cols + 1), grid_height / (end_row - start_row + 1))
-        start_x = margin + cell_size
-        start_y = page_height - margin - (90 if draw_headers else 20)
+        max_grid_height = start_y - margin
+        cell_size = min((page_width - 2 * margin) / (cols + 2), max_grid_height / (end_row - start_row + 2))
+        x0 = margin + cell_size
+        y0 = start_y - cell_size
 
-        # Column headers
-        if draw_headers:
+        if include_headers:
             for col in range(cols):
-                c.drawCentredString(start_x + col * cell_size + cell_size / 2, start_y + 4, f"C{col+1}")
+                c.drawCentredString(x0 + col * cell_size + cell_size / 2, y0 + cell_size + 2, f"C{col+1}")
 
-        # Grid cells
-        for row in range(start_row, end_row):
-            y = start_y - ((row - start_row + 1) * cell_size)
-            c.drawString(margin, y + cell_size / 4, f"R{row+1}")
+        for row_idx in range(start_row, end_row):
+            y = y0 - (row_idx - start_row) * cell_size
+            c.drawRightString(x0 - 2, y + cell_size / 4, f"R{row_idx+1}")
             for col in range(cols):
-                val = grid[row][col]
+                val = grid[row_idx][col]
                 bg, fg = color_map[val]
-                x = start_x + col * cell_size
+                x = x0 + col * cell_size
                 c.setFillColor(bg)
                 c.rect(x, y, cell_size, cell_size, fill=1, stroke=1)
                 c.setFillColor(fg)
                 c.drawCentredString(x + cell_size / 2, y + cell_size / 4, str(val))
 
-        # Outer border
+        # Draw border
+        grid_height = (end_row - start_row) * cell_size
         c.setStrokeColor(black)
-        c.setLineWidth(1.2)
-        c.rect(start_x, start_y - (end_row - start_row) * cell_size, cols * cell_size, (end_row - start_row) * cell_size)
+        c.setLineWidth(1.0)
+        c.rect(x0, y0 - (end_row - start_row - 1) * cell_size, cols * cell_size, grid_height)
 
-    # Page 1
-    draw_header()
-    draw_key(page_height - margin - 80)
-    draw_grid(0, split_row, draw_headers=True)
+    # PAGE 1
+    bottom_y = draw_header_and_key()
+    draw_grid(0, half_rows, bottom_y, include_headers=True)
     c.showPage()
 
-    # Page 2 (no header or key)
-    draw_grid(split_row, rows, draw_headers=False)
+    # PAGE 2
+    draw_grid(half_rows, rows, page_height - margin, include_headers=False)
     c.save()
-
-    return filepath
-
-# Example test file output path
-output_path = "/mnt/data/final_dice_map_output.pdf"
-
-# Dummy test grid
-import numpy as np
-np.random.seed(0)
-dummy_grid = np.random.randint(0, 7, size=(100, 100)).tolist()
-
-# Call function
-generate_final_dice_pdf(output_path, dummy_grid, "Test Project")
-
-output_path
 
 
 
