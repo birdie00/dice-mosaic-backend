@@ -147,20 +147,12 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.lib.units import inch
-from reportlab.lib.colors import Color, black, white, lightgrey
-import numpy as np
-
 def generate_better_dice_pdf(filepath, grid, project_name):
     page_width, page_height = landscape(letter)
     margin = 0.25 * inch
     c = canvas.Canvas(filepath, pagesize=landscape(letter))
 
     rows, cols = len(grid), len(grid[0])
-    half_rows = rows // 2
-
     color_map = {
         0: (Color(0, 0, 0), white),
         1: (Color(1, 0, 0), white),
@@ -171,9 +163,17 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (Color(1, 1, 1), black),
     }
 
+    cell_size = min((page_width - 2 * margin) / (cols + 1), 10)
+    grid_start_x = margin + cell_size
+    label_font_size = 4.5
+    number_font_size = 6
+    header_height = 190  # reserved space for title and key
+    available_height = page_height - header_height - margin
+    rows_per_page = int(available_height // cell_size)
+
     def draw_header_and_key():
         c.setFont("Helvetica-Bold", 18)
-        c.drawCentredString(page_width / 2, page_height - margin, f"Dice Ideas Artwork Schematic for '{project_name}'")
+        c.drawCentredString(page_width / 2, page_height - margin, f"Pipcasso Dice Map for '{project_name}'")
         c.setFont("Helvetica", 10)
         top = page_height - margin - 20
         c.drawString(margin, top, f"Project: {project_name}")
@@ -198,68 +198,71 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.setFont("Helvetica", 8)
         for i in range(7):
             x = margin
-            bg, _ = color_map[i]
+            bg, fg = color_map[i]
             label = ["Black", "Red", "Blue", "Orange", "Green", "Yellow", "White"][i]
             count = sum(row.count(i) for row in grid)
             entries = [label, f"{i} face", f"{count}"]
             for j, text in enumerate(entries):
                 c.setFillColor(bg if j == 0 else white)
                 c.rect(x, y, col_widths[j], row_height, stroke=1, fill=1)
-                c.setFillColor(white if j == 0 else black)
+                adjusted_fg = black if (i in [5, 6] and j == 0) else (white if j == 0 else black)
+                c.setFillColor(adjusted_fg)
                 c.drawCentredString(x + col_widths[j]/2, y + 3, text)
                 x += col_widths[j]
             y -= row_height
         return y - 10
 
+    def draw_column_headers(start_y):
+        c.setFont("Helvetica", label_font_size)
+        for col in range(cols):
+            x = grid_start_x + col * cell_size
+            c.setFillColor(lightgrey)
+            c.setStrokeColor(black)
+            c.rect(x, start_y, cell_size, cell_size, fill=1, stroke=1)
+            c.setFillColor(black)
+            c.drawCentredString(x + cell_size / 2, start_y + 1.5, f"C{col+1}")
+
     def draw_grid(start_row, end_row, start_y, include_headers):
-        max_grid_height = start_y - margin
-        cell_size = min((page_width - 2 * margin) / (cols + 1), max_grid_height / (end_row - start_row + 1))
-        start_x = margin + cell_size
-        start_y = start_y
-
-        label_font_size = 5
-        number_font_size = 6
-
+        y_origin = start_y
         if include_headers:
-            c.setFont("Helvetica", label_font_size)
-            for col in range(cols):
-                x = start_x + col * cell_size
-                c.setFillColor(lightgrey)
-                c.rect(x, start_y, cell_size, cell_size, fill=1, stroke=1)
-                c.setFillColor(black)
-                c.drawCentredString(x + cell_size / 2, start_y + 2, f"C{col+1}")
+            draw_column_headers(y_origin)
 
         for row_idx in range(start_row, end_row):
-            y = start_y - ((row_idx - start_row + 1) * cell_size)
+            y = y_origin - ((row_idx - start_row + 1) * cell_size)
             c.setFillColor(lightgrey)
+            c.setStrokeColor(black)
             c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
             c.setFillColor(black)
             c.setFont("Helvetica", label_font_size)
-            c.drawCentredString(margin + cell_size / 2, y + 2, f"R{row_idx+1}")
+            c.drawCentredString(margin + cell_size / 2, y + 1.5, f"R{row_idx+1}")
 
             for col in range(cols):
                 val = grid[row_idx][col]
                 bg, fg = color_map[val]
-                x = start_x + col * cell_size
+                x = grid_start_x + col * cell_size
                 c.setFillColor(bg)
-                c.rect(x, y, cell_size, cell_size, fill=1, stroke=1)
+                c.rect(x, y, cell_size, cell_size, fill=1, stroke=0)
+                c.setStrokeColor(white)
+                c.setLineWidth(0.5)
+                c.rect(x, y, cell_size, cell_size, fill=0, stroke=1)
                 c.setFillColor(fg)
                 c.setFont("Helvetica", number_font_size)
                 c.drawCentredString(x + cell_size / 2, y + 2, str(val))
 
-    # Page 1
-    bottom_y = draw_header_and_key()
-    draw_grid(0, half_rows, bottom_y, include_headers=True)
-    c.showPage()
-
-    # Page 2
-    draw_grid(half_rows, rows, page_height - margin, include_headers=False)
+    current_row = 0
+    page_num = 0
+    while current_row < rows:
+        if page_num == 0:
+            bottom_y = draw_header_and_key()
+        else:
+            bottom_y = page_height - margin
+        end_row = min(current_row + rows_per_page, rows)
+        draw_grid(current_row, end_row, bottom_y, include_headers=True)
+        current_row = end_row
+        page_num += 1
+        if current_row < rows:
+            c.showPage()
     c.save()
-
-
-
-
-
 
 
 @app.post("/generate-pdf")
