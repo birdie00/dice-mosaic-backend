@@ -146,23 +146,19 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
         c.setFont("Helvetica", label_font_size)
         c.drawCentredString(px + cell_size / 2, py - cell_size / 2 - (label_font_size / 2) * 0.3, label)
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import landscape, letter
-from reportlab.lib.colors import Color, black, white, lightgrey
-from reportlab.lib.units import inch
-import numpy as np
-
 def generate_better_dice_pdf(filepath, grid, project_name):
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.colors import Color, black, white, lightgrey
+    from reportlab.lib.units import inch
+
     rows, cols = len(grid), len(grid[0])
-    rotate_grid = rows < cols and cols > 100
+    rotate_grid = rows < cols and cols > 100  # conditionally rotate grid only
     page_width, page_height = landscape(letter)
     margin = 0.25 * inch
     c = canvas.Canvas(filepath, pagesize=(page_width, page_height))
 
-    if rotate_grid:
-        grid = list(map(list, zip(*grid)))
-        rows, cols = len(grid), len(grid[0])
-
+    # Color mapping
     color_map = {
         0: (Color(0, 0, 0), white),
         1: (Color(1, 0, 0), white),
@@ -173,33 +169,29 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         6: (Color(1, 1, 1), black),
     }
 
+    # If rotating, transpose the grid
+    if rotate_grid:
+        grid = list(map(list, zip(*grid)))  # transpose: flip rows and columns
+        rows, cols = len(grid), len(grid[0])
+
     cell_size = min((page_width - 2 * margin) / (cols + 1), (page_height - 2.25 * inch) / ((rows // 2) + 2), 10)
     grid_start_x = margin + cell_size
     label_font_size = 3.5
-    number_font_size = 5
+    number_font_size = 5.2
 
     def draw_header_and_key():
         text_x = margin
-        key_x = page_width - 180
+        key_x = page_width * 0.6
         c.setFont("Helvetica-Bold", 18)
         c.drawCentredString(page_width / 2, page_height - margin, f"Pipcasso Dice Map for '{project_name}'")
-
+        c.setFont("Helvetica", 10)
         top = page_height - margin - 20
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(text_x, top, "PROJECT:")
-        c.setFont("Helvetica", 10)
-        c.drawString(text_x + 60, top, f"{project_name}")
-
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(text_x, top - 15, "DIMENSIONS:")
-        c.setFont("Helvetica", 10)
-        c.drawString(text_x + 60, top - 15, f"{cols} W x {rows} H")
-
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(text_x, top - 30, "INSTRUCTIONS:")
-        c.setFont("Helvetica", 10)
-        c.drawString(text_x + 85, top - 30, "Match the numbers on this blueprint to the dice faces.")
-        c.drawString(text_x + 85, top - 45, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
+        c.drawString(text_x, top, f"Project: {project_name}")
+        c.drawString(text_x, top - 15, f"Dimensions: {cols} W x {rows} H")
+        c.drawString(text_x, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
+        c.drawString(text_x, top - 45, "2's and 3's should be arranged with dots going diagonally from bottom left to top right.")
+        c.drawString(text_x, top - 60, "6's should be arranged with dots aligned vertical.")
+        c.drawString(text_x, top - 75, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
 
         # Dice key in upper-right corner
         y = top
@@ -254,6 +246,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             c.setFillColor(black)
             c.setFont("Helvetica", label_font_size)
             c.drawCentredString(margin + cell_size / 2, y + cell_size * 0.3, f"R{row_idx+1}")
+
             for col in range(cols):
                 val = grid[row_idx][col]
                 bg, fg = color_map[val]
@@ -276,6 +269,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     # Page 2
     draw_grid(half, rows, page_height - margin)
     c.save()
+
 
 
 @app.post("/generate-pdf")
