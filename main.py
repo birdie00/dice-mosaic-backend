@@ -181,7 +181,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     def draw_header_and_key():
         text_x = margin
-        key_x = page_width * 150
+        key_x = page_width * 0.85
         c.setFont("Helvetica-Bold", 18)
         c.drawCentredString(page_width / 2, page_height - margin, f"Pipcasso Dice Map for '{project_name}'")
         c.setFont("Helvetica", 10)
