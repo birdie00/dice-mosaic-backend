@@ -70,10 +70,10 @@ async def analyze_image(
 ):
     print(f"[DEBUG] /analyze received: grid_width={grid_width}, grid_height={grid_height}")
     if grid_width < 10 or grid_height < 10 or grid_width > 1000 or grid_height > 1000:
-    return JSONResponse(
-        status_code=400,
-        content={"error": "Grid size out of range. Must be between 10×10 and 1000×1000."}
-    )
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Grid size out of range. Must be between 10×10 and 1000×1000."}
+        )
 
     original = Image.open(file.file).convert("L")
     base = original.resize((grid_width, grid_height))
