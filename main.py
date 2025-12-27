@@ -23,8 +23,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TEMP fix: open to all, including vercel
-    allow_credentials=False,        # IMPORTANT: must be False when using "*"
+    allow_origins=[
+        "https://www.pipcasso.com",
+        "https://pipcasso.com",
+        "http://localhost:3000"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
