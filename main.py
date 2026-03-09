@@ -415,6 +415,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
 @app.post("/generate-pdf")
 async def generate_dice_map_pdf(grid_data: GridRequest):
+    print("PDF GENERATION v2.1 - simplified overview")
     grid = grid_data.grid_data
     actual_height = len(grid)
     actual_width = len(grid[0]) if actual_height > 0 else 0
