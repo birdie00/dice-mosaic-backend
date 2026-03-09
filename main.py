@@ -186,20 +186,25 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     col_ranges = [(0, col_mid), (col_mid, cols)]
     total_quads = 4
 
+    hdr_bg    = Color(0.94, 0.94, 0.94)   # #F0F0F0 legend column headers
+    page_num_color = Color(0.8, 0.8, 0.8)  # #CCCCCC large page number
+
     # ── Helper: dice count legend table ──────────────────────────────────
     def draw_legend(lx, ly):
         """Draw legend with top-left at (lx, ly). Returns bottom y."""
         rh = 12
         cw = [52, 32, 48]
+        # Column header row
         c.setFont("Helvetica-Bold", 8)
         x = lx
-        for i, hdr in enumerate(["Color", "Face", "Count"]):
-            c.setFillColor(lightgrey)
-            c.rect(x, ly - rh, cw[i], rh, stroke=1, fill=1)
+        for j, hdr in enumerate(["Color", "Face", "Count"]):
+            c.setFillColor(hdr_bg)
+            c.rect(x, ly - rh, cw[j], rh, stroke=1, fill=1)
             c.setFillColor(black)
-            c.drawCentredString(x + cw[i] / 2, ly - rh + 3, hdr)
-            x += cw[i]
+            c.drawCentredString(x + cw[j] / 2, ly - rh + 3, hdr)
+            x += cw[j]
         ly -= rh
+        # Data rows
         c.setFont("Helvetica", 8)
         for i in range(7):
             x = lx
@@ -220,6 +225,14 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.setFont("Helvetica", 8)
         c.setFillColor(Color(0.6, 0.6, 0.6))
         c.drawCentredString(pw / 2, margin / 2, "pipcasso.com")
+        c.setFillColor(black)   # reset
+
+    # ── Helper: large watermark-style page number ─────────────────────
+    def draw_page_number(page_num, total=5):
+        c.setFont("Helvetica", 28)
+        c.setFillColor(page_num_color)
+        c.drawRightString(pw - 1.2 * inch, ph - 0.5 * inch,
+                          f"{page_num} of {total}")
         c.setFillColor(black)   # reset
 
     footer_h = 14   # pts reserved at bottom for footer
@@ -298,6 +311,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.setLineWidth(0.8)
     c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=0, stroke=1)
 
+    draw_page_number(1)
     draw_footer()
     c.showPage()
 
@@ -348,6 +362,10 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             c.drawString(margin, ph - margin - 28,
                          f"Project: {project_name}  |  Full grid: {cols} W × {rows} H  |  "
                          f"This section: {q_cols} W × {q_rows} H")
+            c.setFont("Helvetica", 9)
+            c.setFillColor(Color(0.35, 0.35, 0.35))
+            c.drawString(margin, ph - margin - 42, "Pipcasso Dice Map")
+            c.setFillColor(black)
 
             # ── Thumbnail — plain silhouette + quadrant highlight ─────
             # Scale so the full grid fits within thumb_sz × thumb_sz
@@ -423,6 +441,11 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                     c.setStrokeColor(white)
                     c.setLineWidth(0.3)
                     c.rect(cx, gy, cell_size, cell_size, fill=0, stroke=1)
+                    # Extra border for white cells (val 6) so they're visible on white page
+                    if val == 6:
+                        c.setStrokeColor(Color(0.67, 0.67, 0.67))   # #AAAAAA
+                        c.setLineWidth(0.4)
+                        c.rect(cx, gy, cell_size, cell_size, fill=0, stroke=1)
 
                     # Dice-face number
                     c.setFillColor(fg)
@@ -443,6 +466,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                         c.setLineWidth(1.5)
                         c.line(cx, gy + cell_size, cx + cell_size, gy + cell_size)
 
+            draw_page_number(quad_num + 1)
             draw_footer()
             c.showPage()
 
