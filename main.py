@@ -162,135 +162,256 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     from reportlab.lib.units import inch
 
     rows, cols = len(grid), len(grid[0])
-    rotate_grid = rows < cols and cols > 100  # conditionally rotate grid only
-    page_width, page_height = landscape(letter)
-    margin = 0.25 * inch
-    c = canvas.Canvas(filepath, pagesize=(page_width, page_height))
+    pw, ph = landscape(letter)   # 792 x 612 pts
+    margin = 0.25 * inch         # 18 pts
 
-    # Color mapping
     color_map = {
-        0: (Color(0, 0, 0), white),
-        1: (Color(1, 0, 0), white),
-        2: (Color(0, 0, 1), white),
-        3: (Color(1, 0.55, 0), black),
-        4: (Color(0, 0.5, 0), white),
-        5: (Color(1, 1, 0), black),
-        6: (Color(1, 1, 1), black),
+        0: (Color(0, 0, 0),        white),
+        1: (Color(1, 0, 0),        white),
+        2: (Color(0, 0, 1),        white),
+        3: (Color(1, 0.55, 0),     black),
+        4: (Color(0, 0.5, 0),      white),
+        5: (Color(1, 1, 0),        black),
+        6: (Color(1, 1, 1),        black),
     }
+    color_labels = ["Black", "Red", "Blue", "Orange", "Green", "Yellow", "White"]
 
-    # If rotating, transpose the grid
-    if rotate_grid:
-        grid = list(map(list, zip(*grid)))  # transpose: flip rows and columns
-        rows, cols = len(grid), len(grid[0])
+    c = canvas.Canvas(filepath, pagesize=(pw, ph))
 
-    cell_size = min((page_width - 2 * margin) / (cols + 1), (page_height - 2.25 * inch) / ((rows // 2) + 2), 10)
-    grid_start_x = margin + cell_size
-    label_font_size = 3.5
-    number_font_size = 5.2
+    # ── Quadrant split (~50 rows / ~50 cols each) ─────────────────────────
+    Q = 50
+    def make_ranges(total):
+        splits = list(range(0, total, Q)) + [total]
+        return [(splits[i], splits[i + 1]) for i in range(len(splits) - 1)]
 
-    def draw_header_and_key():
-        text_x = margin
-        key_x = page_width * 0.80
-        c.setFont("Helvetica-Bold", 18)
-        c.drawCentredString(page_width / 2, page_height - margin, f"Pipcasso Dice Map for '{project_name}'")
-        c.setFont("Helvetica", 10)
-        top = page_height - margin - 20
-        c.drawString(text_x, top, f"Project: {project_name}")
-        c.drawString(text_x, top - 15, f"Dimensions: {cols} W x {rows} H")
-        c.drawString(text_x, top - 30, "Instructions: Match the numbers on this blueprint to the dice faces.")
-        c.drawString(text_x, top - 45, "2's and 3's should be arranged with dots going diagonally from bottom left to top right.")
-        c.drawString(text_x, top - 60, "6's should be arranged with dots aligned vertical.")
-        c.drawString(text_x, top - 75, "Blank (0 Face) dice can be made by coloring a '1' face with a black marker.")
+    row_ranges = make_ranges(rows)
+    col_ranges = make_ranges(cols)
+    total_quads = len(row_ranges) * len(col_ranges)
 
-        # Dice key in upper-right corner
-        y = top
-        row_height = 12
-        col_widths = [50, 35, 50]
-        headers = ["Color", "Dice", "Count"]
-        c.setFont("Helvetica-Bold", 9)
-        x = key_x
-        for i, header in enumerate(headers):
+    # ── Helper: dice count legend table ──────────────────────────────────
+    def draw_legend(lx, ly):
+        """Draw legend with top-left at (lx, ly). Returns bottom y."""
+        rh = 12
+        cw = [52, 32, 48]
+        c.setFont("Helvetica-Bold", 8)
+        x = lx
+        for i, hdr in enumerate(["Color", "Face", "Count"]):
             c.setFillColor(lightgrey)
-            c.rect(x, y - row_height, col_widths[i], row_height, stroke=1, fill=1)
+            c.rect(x, ly - rh, cw[i], rh, stroke=1, fill=1)
             c.setFillColor(black)
-            c.drawCentredString(x + col_widths[i]/2, y - row_height + 3, header)
-            x += col_widths[i]
-
-        y -= row_height
+            c.drawCentredString(x + cw[i] / 2, ly - rh + 3, hdr)
+            x += cw[i]
+        ly -= rh
         c.setFont("Helvetica", 8)
         for i in range(7):
-            x = key_x
+            x = lx
             bg, _ = color_map[i]
-            label = ["Black", "Red", "Blue", "Orange", "Green", "Yellow", "White"][i]
-            count = sum(row.count(i) for row in grid)
-            entries = [label, f"{i} face", f"{count}"]
-            for j, text in enumerate(entries):
+            cnt = sum(row.count(i) for row in grid)
+            for j, txt in enumerate([color_labels[i], f"{i} face", f"{cnt}"]):
                 c.setFillColor(bg if j == 0 else white)
-                c.rect(x, y - row_height, col_widths[j], row_height, stroke=1, fill=1)
-                text_color = black if (i in [5, 6] and j == 0) else (white if j == 0 else black)
-                c.setFillColor(text_color)
-                c.drawCentredString(x + col_widths[j]/2, y - row_height + 3, text)
-                x += col_widths[j]
-            y -= row_height
-        return y - 10
+                c.rect(x, ly - rh, cw[j], rh, stroke=1, fill=1)
+                tc = black if (i in [5, 6] and j == 0) else (white if j == 0 else black)
+                c.setFillColor(tc)
+                c.drawCentredString(x + cw[j] / 2, ly - rh + 3, txt)
+                x += cw[j]
+            ly -= rh
+        return ly - 6
 
-    def draw_column_headers(start_y):
-        c.setFont("Helvetica", label_font_size)
-        for col in range(cols):
-            x = grid_start_x + col * cell_size
-            is_tenth_col = (col + 1) % 10 == 0
-            c.setFillColor(darkgrey if is_tenth_col else lightgrey)
-            c.setStrokeColor(black)
-            c.rect(x, start_y, cell_size, cell_size, fill=1, stroke=1)
-            c.setFillColor(white if is_tenth_col else black)
-            c.drawCentredString(x + cell_size / 2, start_y + cell_size * 0.3, f"C{col+1}")
+    # ══════════════════════════════════════════════════════════════════════
+    # PAGE 1 — OVERVIEW
+    # ══════════════════════════════════════════════════════════════════════
+    c.setFont("Helvetica-Bold", 20)
+    c.drawCentredString(pw / 2, ph - margin - 16,
+                        f"Pipcasso Dice Map — '{project_name}'")
 
-    def draw_grid(start_row, end_row, start_y):
-        draw_column_headers(start_y)
-        y_origin = start_y - cell_size
-        for row_idx in range(start_row, end_row):
-            y = y_origin - ((row_idx - start_row) * cell_size)
-            is_tenth_row = (row_idx + 1) % 10 == 0
-            c.setFillColor(darkgrey if is_tenth_row else lightgrey)
-            c.setStrokeColor(black)
-            c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
-            c.setFillColor(white if is_tenth_row else black)
-            c.setFont("Helvetica", label_font_size)
-            c.drawCentredString(margin + cell_size / 2, y + cell_size * 0.3, f"R{row_idx+1}")
+    info_top = ph - margin - 40
+    c.setFont("Helvetica", 9)
+    for i, line in enumerate([
+        f"Grid: {cols} W × {rows} H  |  Total dice: {rows * cols}",
+        "Instructions: Match the numbers to the dice faces shown at right.",
+        "2's & 3's: arrange dots diagonally, bottom-left to top-right.",
+        "6's: arrange with dots aligned vertically.",
+        "0 face: colour a '1' die face with a black marker.",
+    ]):
+        c.drawString(margin, info_top - i * 13, line)
 
-            for col in range(cols):
-                val = grid[row_idx][col]
-                bg, fg = color_map[val]
-                x = grid_start_x + col * cell_size
-                c.setFillColor(bg)
-                c.rect(x, y, cell_size, cell_size, fill=1, stroke=0)
-                c.setStrokeColor(white)
-                c.setLineWidth(0.3)
-                c.rect(x, y, cell_size, cell_size, fill=0, stroke=1)
-                c.setFillColor(fg)
-                c.setFont("Helvetica", number_font_size)
-                c.drawCentredString(x + cell_size / 2, y + cell_size * 0.3, str(val))
+    draw_legend(pw * 0.72, info_top)
 
-                # Bold separator on right edge every 10th column
-                if (col + 1) % 10 == 0:
-                    c.setStrokeColor(darkgrey)
-                    c.setLineWidth(1.5)
-                    c.line(x + cell_size, y, x + cell_size, y + cell_size)
+    # Overview grid — colour only, no numbers
+    header_bottom = info_top - 5 * 13 - 10
+    ov_avail_w = pw - 2 * margin
+    ov_avail_h = header_bottom - margin
+    ov_cell = min(ov_avail_w / cols, ov_avail_h / rows)
+    ov_w = ov_cell * cols
+    ov_h = ov_cell * rows
+    ov_x0 = margin + (ov_avail_w - ov_w) / 2
+    ov_y0 = margin + (ov_avail_h - ov_h) / 2
 
-                # Bold separator on top edge for first row of section and every 10th row
-                if (row_idx - start_row) == 0 or row_idx % 10 == 0:
-                    c.setStrokeColor(darkgrey)
-                    c.setLineWidth(1.5)
-                    c.line(x, y + cell_size, x + cell_size, y + cell_size)
+    for r in range(rows):
+        for ci in range(cols):
+            val = grid[r][ci]
+            bg, _ = color_map[val]
+            c.setFillColor(bg)
+            c.rect(ov_x0 + ci * ov_cell,
+                   ov_y0 + (rows - 1 - r) * ov_cell,
+                   ov_cell, ov_cell, fill=1, stroke=0)
 
-    # Page 1
-    bottom_y = draw_header_and_key()
-    half = rows // 2
-    draw_grid(0, half, bottom_y)
+    c.setStrokeColor(black)
+    c.setLineWidth(0.5)
+    c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=0, stroke=1)
+
     c.showPage()
 
-    # Page 2
-    draw_grid(half, rows, page_height - margin)
+    # ══════════════════════════════════════════════════════════════════════
+    # PAGES 2+ — QUADRANT DETAIL PAGES
+    # ══════════════════════════════════════════════════════════════════════
+    quad_num = 0
+    for ri, (r_start, r_end) in enumerate(row_ranges):
+        for ci, (c_start, c_end) in enumerate(col_ranges):
+            quad_num += 1
+            q_rows = r_end - r_start
+            q_cols = c_end - c_start
+
+            # Thumbnail sits in top-right corner
+            thumb_sz  = 1.4 * inch        # 100.8 pts
+            thumb_x   = pw - margin - thumb_sz
+            thumb_y   = ph - margin - thumb_sz
+
+            # Header region shares the same vertical band as the thumbnail
+            header_bottom = ph - margin - thumb_sz
+
+            # Grid area — full width below header, row-label strip on left
+            label_cell = 10               # pts for row/col label cells
+            ga_left    = margin + label_cell
+            ga_right   = pw - margin
+            ga_top     = header_bottom - 4
+            ga_bottom  = margin
+
+            avail_w    = ga_right - ga_left
+            avail_h    = ga_top - ga_bottom - label_cell  # reserve top strip for col headers
+
+            cell_size  = min(avail_w / q_cols, avail_h / q_rows)
+            label_font = min(label_cell * 0.42, 4.5)
+            num_font   = max(3.5, min(cell_size * 0.58, 8.5))
+
+            g_w  = cell_size * q_cols
+            g_h  = cell_size * q_rows
+            gx0  = ga_left + (avail_w - g_w) / 2   # centre grid horizontally
+            gy0  = ga_bottom                         # grid bottom-left y
+
+            # ── Section header ────────────────────────────────────────
+            c.setFillColor(black)
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(margin, ph - margin - 14,
+                         f"Section {quad_num} of {total_quads}  —  "
+                         f"Rows {r_start + 1}–{r_end},  Cols {c_start + 1}–{c_end}")
+            c.setFont("Helvetica", 8)
+            c.drawString(margin, ph - margin - 28,
+                         f"Project: {project_name}  |  Full grid: {cols} W × {rows} H  |  "
+                         f"This section: {q_cols} W × {q_rows} H")
+
+            # ── Thumbnail ─────────────────────────────────────────────
+            t_cell = thumb_sz / max(rows, cols)
+            t_w    = t_cell * cols
+            t_h    = t_cell * rows
+            tx0    = thumb_x + (thumb_sz - t_w) / 2
+            ty0    = thumb_y + (thumb_sz - t_h) / 2
+
+            for tr in range(rows):
+                for tc in range(cols):
+                    val = grid[tr][tc]
+                    bg, _ = color_map[val]
+                    c.setFillColor(bg)
+                    c.rect(tx0 + tc * t_cell,
+                           ty0 + (rows - 1 - tr) * t_cell,
+                           t_cell, t_cell, fill=1, stroke=0)
+
+            c.setStrokeColor(black)
+            c.setLineWidth(0.5)
+            c.rect(tx0, ty0, t_w, t_h, fill=0, stroke=1)
+
+            # Highlight current quadrant on thumbnail
+            hx = tx0 + c_start * t_cell
+            hy = ty0 + (rows - r_end) * t_cell
+            hw = q_cols * t_cell
+            hh = q_rows * t_cell
+            c.setFillColor(Color(1, 0.4, 0, 0.35))   # semi-transparent orange fill
+            c.rect(hx, hy, hw, hh, fill=1, stroke=0)
+            c.setStrokeColor(Color(0.85, 0.15, 0))
+            c.setLineWidth(1.0)
+            c.rect(hx, hy, hw, hh, fill=0, stroke=1)
+
+            c.setFont("Helvetica", 5.5)
+            c.setFillColor(black)
+            c.drawCentredString(tx0 + t_w / 2, ty0 - 7, "Grid overview")
+
+            # ── Column headers ────────────────────────────────────────
+            col_hdr_y = gy0 + g_h     # bottom of column-header row
+            c.setFont("Helvetica", label_font)
+            for col_i in range(q_cols):
+                actual_col = c_start + col_i
+                is_tenth   = (actual_col + 1) % 10 == 0
+                cx         = gx0 + col_i * cell_size
+                c.setFillColor(darkgrey if is_tenth else lightgrey)
+                c.setStrokeColor(black)
+                c.setLineWidth(0.3)
+                c.rect(cx, col_hdr_y, cell_size, label_cell, fill=1, stroke=1)
+                c.setFillColor(white if is_tenth else black)
+                c.drawCentredString(cx + cell_size / 2,
+                                    col_hdr_y + label_cell * 0.28,
+                                    f"C{actual_col + 1}")
+
+            # ── Grid rows ─────────────────────────────────────────────
+            for row_i in range(q_rows):
+                actual_row = r_start + row_i
+                gy         = gy0 + (q_rows - 1 - row_i) * cell_size
+
+                # Row label
+                is_tenth_r = (actual_row + 1) % 10 == 0
+                c.setFillColor(darkgrey if is_tenth_r else lightgrey)
+                c.setStrokeColor(black)
+                c.setLineWidth(0.3)
+                c.rect(gx0 - label_cell, gy, label_cell, cell_size, fill=1, stroke=1)
+                c.setFillColor(white if is_tenth_r else black)
+                c.setFont("Helvetica", label_font)
+                c.drawCentredString(gx0 - label_cell / 2,
+                                    gy + cell_size * 0.28,
+                                    f"R{actual_row + 1}")
+
+                for col_i in range(q_cols):
+                    actual_col = c_start + col_i
+                    val        = grid[actual_row][actual_col]
+                    bg, fg     = color_map[val]
+                    cx         = gx0 + col_i * cell_size
+
+                    # Cell fill + light grid stroke
+                    c.setFillColor(bg)
+                    c.rect(cx, gy, cell_size, cell_size, fill=1, stroke=0)
+                    c.setStrokeColor(white)
+                    c.setLineWidth(0.3)
+                    c.rect(cx, gy, cell_size, cell_size, fill=0, stroke=1)
+
+                    # Dice-face number
+                    c.setFillColor(fg)
+                    c.setFont("Helvetica", num_font)
+                    c.drawCentredString(cx + cell_size / 2,
+                                        gy + cell_size * 0.28,
+                                        str(val))
+
+                    # Bold separator — right edge every 10th column
+                    if (actual_col + 1) % 10 == 0:
+                        c.setStrokeColor(darkgrey)
+                        c.setLineWidth(1.5)
+                        c.line(cx + cell_size, gy, cx + cell_size, gy + cell_size)
+
+                    # Bold separator — top edge at quadrant start and every 10th row
+                    if row_i == 0 or actual_row % 10 == 0:
+                        c.setStrokeColor(darkgrey)
+                        c.setLineWidth(1.5)
+                        c.line(cx, gy + cell_size, cx + cell_size, gy + cell_size)
+
+            c.showPage()
+
     c.save()
 
 
