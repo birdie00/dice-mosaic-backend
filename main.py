@@ -215,6 +215,15 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             ly -= rh
         return ly - 6
 
+    # ── Helper: footer ───────────────────────────────────────────────────
+    def draw_footer():
+        c.setFont("Helvetica", 8)
+        c.setFillColor(Color(0.6, 0.6, 0.6))
+        c.drawCentredString(pw / 2, margin / 2, "pipcasso.com")
+        c.setFillColor(black)   # reset
+
+    footer_h = 14   # pts reserved at bottom for footer
+
     # ══════════════════════════════════════════════════════════════════════
     # PAGE 1 — OVERVIEW
     # ══════════════════════════════════════════════════════════════════════
@@ -239,19 +248,20 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     draw_legend(pw * 0.72, info_top)
 
     # Overview grid — per-cell colours, no numbers
-    # Sits below whichever ends lower: instructions or legend; capped at 45% page height
+    # 20pt gap below whichever of instructions/legend ends lower; fills rest of page
     instructions_bottom = info_top - 5 * 13
-    header_bottom = min(instructions_bottom, legend_bottom) - 14  # 14pt gap
+    ov_gap = 20
+    grid_top_y = min(instructions_bottom, legend_bottom) - ov_gap
     ov_avail_w = pw - 2 * margin
-    ov_avail_h = header_bottom - margin
-    ov_avail_h = min(ov_avail_h, ph * 0.45)  # never exceed 45% of page height
+    ov_avail_h = grid_top_y - margin - footer_h
 
     ov_cell = min(ov_avail_w / cols, ov_avail_h / rows)
     ov_w = ov_cell * cols
     ov_h = ov_cell * rows
-    ov_x0 = margin + (ov_avail_w - ov_w) / 2
-    ov_y0 = margin + (ov_avail_h - ov_h) / 2
+    ov_x0 = margin + (ov_avail_w - ov_w) / 2   # centre horizontally
+    ov_y0 = grid_top_y - ov_h                    # top-align: start right below header
 
+    # Per-cell colour fill
     for r in range(rows):
         for ci in range(cols):
             val = grid[r][ci]
@@ -261,10 +271,34 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                    ov_y0 + (rows - 1 - r) * ov_cell,
                    ov_cell, ov_cell, fill=1, stroke=0)
 
+    # Faint per-cell grid lines (0.3pt, light grey)
+    c.setStrokeColor(Color(0.7, 0.7, 0.7))
+    c.setLineWidth(0.3)
+    for col_i in range(1, cols):
+        x = ov_x0 + col_i * ov_cell
+        if col_i % 10 != 0:
+            c.line(x, ov_y0, x, ov_y0 + ov_h)
+    for row_i in range(1, rows):
+        y = ov_y0 + row_i * ov_cell
+        if row_i % 10 != 0:
+            c.line(ov_x0, y, ov_x0 + ov_w, y)
+
+    # Bold 10-cell separator lines (0.8pt, dark grey)
+    c.setStrokeColor(darkgrey)
+    c.setLineWidth(0.8)
+    for col_i in range(10, cols, 10):
+        x = ov_x0 + col_i * ov_cell
+        c.line(x, ov_y0, x, ov_y0 + ov_h)
+    for row_i in range(10, rows, 10):
+        y = ov_y0 + row_i * ov_cell
+        c.line(ov_x0, y, ov_x0 + ov_w, y)
+
+    # Outer border
     c.setStrokeColor(black)
-    c.setLineWidth(0.5)
+    c.setLineWidth(0.8)
     c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=0, stroke=1)
 
+    draw_footer()
     c.showPage()
 
     # ══════════════════════════════════════════════════════════════════════
@@ -409,6 +443,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                         c.setLineWidth(1.5)
                         c.line(cx, gy + cell_size, cx + cell_size, gy + cell_size)
 
+            draw_footer()
             c.showPage()
 
     c.save()
