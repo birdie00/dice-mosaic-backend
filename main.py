@@ -231,7 +231,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     def draw_page_number(page_num, total=5):
         c.setFont("Helvetica", 28)
         c.setFillColor(page_num_color)
-        c.drawRightString(pw - 1.2 * inch, ph - 0.5 * inch,
+        c.drawRightString(pw - 1.2 * inch, 0.4 * inch,
                           f"{page_num} of {total}")
         c.setFillColor(black)   # reset
 
