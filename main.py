@@ -158,7 +158,7 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 def generate_better_dice_pdf(filepath, grid, project_name):
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import landscape, letter
-    from reportlab.lib.colors import Color, black, white, lightgrey
+    from reportlab.lib.colors import Color, black, white, lightgrey, darkgrey
     from reportlab.lib.units import inch
 
     rows, cols = len(grid), len(grid[0])
@@ -238,10 +238,11 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.setFont("Helvetica", label_font_size)
         for col in range(cols):
             x = grid_start_x + col * cell_size
-            c.setFillColor(lightgrey)
+            is_tenth_col = (col + 1) % 10 == 0
+            c.setFillColor(darkgrey if is_tenth_col else lightgrey)
             c.setStrokeColor(black)
             c.rect(x, start_y, cell_size, cell_size, fill=1, stroke=1)
-            c.setFillColor(black)
+            c.setFillColor(white if is_tenth_col else black)
             c.drawCentredString(x + cell_size / 2, start_y + cell_size * 0.3, f"C{col+1}")
 
     def draw_grid(start_row, end_row, start_y):
@@ -249,10 +250,11 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         y_origin = start_y - cell_size
         for row_idx in range(start_row, end_row):
             y = y_origin - ((row_idx - start_row) * cell_size)
-            c.setFillColor(lightgrey)
+            is_tenth_row = (row_idx + 1) % 10 == 0
+            c.setFillColor(darkgrey if is_tenth_row else lightgrey)
             c.setStrokeColor(black)
             c.rect(margin, y, cell_size, cell_size, fill=1, stroke=1)
-            c.setFillColor(black)
+            c.setFillColor(white if is_tenth_row else black)
             c.setFont("Helvetica", label_font_size)
             c.drawCentredString(margin + cell_size / 2, y + cell_size * 0.3, f"R{row_idx+1}")
 
@@ -263,11 +265,23 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 c.setFillColor(bg)
                 c.rect(x, y, cell_size, cell_size, fill=1, stroke=0)
                 c.setStrokeColor(white)
-                c.setLineWidth(0.5)
+                c.setLineWidth(0.3)
                 c.rect(x, y, cell_size, cell_size, fill=0, stroke=1)
                 c.setFillColor(fg)
                 c.setFont("Helvetica", number_font_size)
                 c.drawCentredString(x + cell_size / 2, y + cell_size * 0.3, str(val))
+
+                # Bold separator on right edge every 10th column
+                if (col + 1) % 10 == 0:
+                    c.setStrokeColor(darkgrey)
+                    c.setLineWidth(1.5)
+                    c.line(x + cell_size, y, x + cell_size, y + cell_size)
+
+                # Bold separator on top edge for first row of section and every 10th row
+                if (row_idx - start_row) == 0 or row_idx % 10 == 0:
+                    c.setStrokeColor(darkgrey)
+                    c.setLineWidth(1.5)
+                    c.line(x, y + cell_size, x + cell_size, y + cell_size)
 
     # Page 1
     bottom_y = draw_header_and_key()
