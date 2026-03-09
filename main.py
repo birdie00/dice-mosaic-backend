@@ -250,7 +250,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     for r in range(rows):
         for ci in range(cols):
             val = grid[r][ci]
-            bg, _ = color_map[val]
+            bg, _ = color_map.get(val, color_map[0])
             c.setFillColor(bg)
             c.rect(ov_x0 + ci * ov_cell,
                    ov_y0 + (rows - 1 - r) * ov_cell,
@@ -320,7 +320,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             for tr in range(rows):
                 for tc in range(cols):
                     val = grid[tr][tc]
-                    bg, _ = color_map[val]
+                    bg, _ = color_map.get(val, color_map[0])
                     c.setFillColor(bg)
                     c.rect(tx0 + tc * t_cell,
                            ty0 + (rows - 1 - tr) * t_cell,
@@ -381,7 +381,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                 for col_i in range(q_cols):
                     actual_col = c_start + col_i
                     val        = grid[actual_row][actual_col]
-                    bg, fg     = color_map[val]
+                    bg, fg     = color_map.get(val, color_map[0])
                     cx         = gx0 + col_i * cell_size
 
                     # Cell fill + light grid stroke
@@ -426,7 +426,12 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     filename = f"dice_map_{uuid4().hex}.pdf"
     filepath = os.path.join("static", filename)
 
-    generate_better_dice_pdf(filepath, grid, project_name)
+    try:
+        generate_better_dice_pdf(filepath, grid, project_name)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e), "traceback": traceback.format_exc()})
 
     return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
 from fastapi import Request
