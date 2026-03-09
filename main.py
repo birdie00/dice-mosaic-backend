@@ -220,20 +220,16 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             ly -= rh
         return ly - 6
 
-    # ── Helper: footer ───────────────────────────────────────────────────
-    def draw_footer():
+    # ── Helper: footer with inline page number ───────────────────────────
+    def draw_footer(page_num, total=5):
         c.setFont("Helvetica", 8)
         c.setFillColor(Color(0.6, 0.6, 0.6))
-        c.drawCentredString(pw / 2, margin / 2, "pipcasso.com")
+        c.drawCentredString(pw / 2, margin / 2,
+                            f"pipcasso.com  |  Page {page_num} of {total}")
         c.setFillColor(black)   # reset
 
-    # ── Helper: large watermark-style page number ─────────────────────
     def draw_page_number(page_num, total=5):
-        c.setFont("Helvetica", 28)
-        c.setFillColor(page_num_color)
-        c.drawRightString(pw - 1.2 * inch, margin / 2,
-                          f"{page_num} of {total}")
-        c.setFillColor(black)   # reset
+        pass  # replaced by inline footer
 
     footer_h = 14   # pts reserved at bottom for footer
 
@@ -311,8 +307,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     c.setLineWidth(0.8)
     c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=0, stroke=1)
 
-    draw_page_number(1)
-    draw_footer()
+    draw_footer(1)
     c.showPage()
 
     # ══════════════════════════════════════════════════════════════════════
@@ -466,8 +461,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                         c.setLineWidth(1.5)
                         c.line(cx, gy + cell_size, cx + cell_size, gy + cell_size)
 
-            draw_page_number(quad_num + 1)
-            draw_footer()
+            draw_footer(quad_num + 1)
             c.showPage()
 
     c.save()
