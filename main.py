@@ -179,15 +179,12 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     c = canvas.Canvas(filepath, pagesize=(pw, ph))
 
-    # ── Quadrant split (~50 rows / ~50 cols each) ─────────────────────────
-    Q = 50
-    def make_ranges(total):
-        splits = list(range(0, total, Q)) + [total]
-        return [(splits[i], splits[i + 1]) for i in range(len(splits) - 1)]
-
-    row_ranges = make_ranges(rows)
-    col_ranges = make_ranges(cols)
-    total_quads = len(row_ranges) * len(col_ranges)
+    # ── Always exactly 4 quadrants (2×2 split) ───────────────────────────
+    row_mid = rows // 2
+    col_mid = cols // 2
+    row_ranges = [(0, row_mid), (row_mid, rows)]
+    col_ranges = [(0, col_mid), (col_mid, cols)]
+    total_quads = 4
 
     # ── Helper: dice count legend table ──────────────────────────────────
     def draw_legend(lx, ly):
@@ -241,15 +238,13 @@ def generate_better_dice_pdf(filepath, grid, project_name):
 
     draw_legend(pw * 0.72, info_top)
 
-    # Overview grid — plain silhouette only (no cell colours, no numbers)
-    # Sits below whichever is lower: the instructions block or the legend table
+    # Overview grid — per-cell colours, no numbers
+    # Sits below whichever ends lower: instructions or legend; capped at 45% page height
     instructions_bottom = info_top - 5 * 13
     header_bottom = min(instructions_bottom, legend_bottom) - 14  # 14pt gap
     ov_avail_w = pw - 2 * margin
     ov_avail_h = header_bottom - margin
-    # Cap so the silhouette never exceeds half the page height
-    max_ov_h = (ph / 2) - margin
-    ov_avail_h = min(ov_avail_h, max_ov_h)
+    ov_avail_h = min(ov_avail_h, ph * 0.45)  # never exceed 45% of page height
 
     ov_cell = min(ov_avail_w / cols, ov_avail_h / rows)
     ov_w = ov_cell * cols
@@ -257,11 +252,18 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     ov_x0 = margin + (ov_avail_w - ov_w) / 2
     ov_y0 = margin + (ov_avail_h - ov_h) / 2
 
-    # Draw plain light-grey filled rectangle representing grid aspect ratio
-    c.setFillColor(lightgrey)
+    for r in range(rows):
+        for ci in range(cols):
+            val = grid[r][ci]
+            bg, _ = color_map.get(val, color_map[0])
+            c.setFillColor(bg)
+            c.rect(ov_x0 + ci * ov_cell,
+                   ov_y0 + (rows - 1 - r) * ov_cell,
+                   ov_cell, ov_cell, fill=1, stroke=0)
+
     c.setStrokeColor(black)
-    c.setLineWidth(0.8)
-    c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=1, stroke=1)
+    c.setLineWidth(0.5)
+    c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=0, stroke=1)
 
     c.showPage()
 
