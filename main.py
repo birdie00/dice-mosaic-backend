@@ -312,7 +312,7 @@ def generate_better_dice_pdf(filepath, grid, project_name):
             q_cols = c_end - c_start
 
             # Thumbnail sits in top-right corner
-            thumb_sz  = 1.4 * inch        # 100.8 pts
+            thumb_sz  = 1.0 * inch        # 72 pts
             thumb_x   = pw - margin - thumb_sz
             thumb_y   = ph - margin - thumb_sz
 
