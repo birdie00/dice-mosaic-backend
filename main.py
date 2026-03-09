@@ -158,12 +158,12 @@ def draw_grid_section(c, grid, start_x, start_y, width, height, cell_size, globa
 
 def generate_better_dice_pdf(filepath, grid, project_name):
     from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.pagesizes import landscape, portrait, letter
     from reportlab.lib.colors import Color, black, white, lightgrey, darkgrey
     from reportlab.lib.units import inch
 
     rows, cols = len(grid), len(grid[0])
-    pw, ph = landscape(letter)   # 792 x 612 pts
+    pw, ph = portrait(letter) if rows > cols else landscape(letter)
     margin = 0.25 * inch         # 18 pts
 
     color_map = {
