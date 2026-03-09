@@ -1,3 +1,4 @@
+# v2.1 - simplified overview
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
