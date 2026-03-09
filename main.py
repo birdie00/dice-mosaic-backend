@@ -235,30 +235,32 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     ]):
         c.drawString(margin, info_top - i * 13, line)
 
+    # Legend occupies 8 rows (1 header + 7 colours) at 12pt each
+    legend_bottom = info_top - 8 * 12 - 6
+
     draw_legend(pw * 0.72, info_top)
 
-    # Overview grid — colour only, no numbers
-    header_bottom = info_top - 5 * 13 - 10
+    # Overview grid — plain silhouette only (no cell colours, no numbers)
+    # Sits below whichever is lower: the instructions block or the legend table
+    instructions_bottom = info_top - 5 * 13
+    header_bottom = min(instructions_bottom, legend_bottom) - 14  # 14pt gap
     ov_avail_w = pw - 2 * margin
     ov_avail_h = header_bottom - margin
+    # Cap so the silhouette never exceeds half the page height
+    max_ov_h = (ph / 2) - margin
+    ov_avail_h = min(ov_avail_h, max_ov_h)
+
     ov_cell = min(ov_avail_w / cols, ov_avail_h / rows)
     ov_w = ov_cell * cols
     ov_h = ov_cell * rows
     ov_x0 = margin + (ov_avail_w - ov_w) / 2
     ov_y0 = margin + (ov_avail_h - ov_h) / 2
 
-    for r in range(rows):
-        for ci in range(cols):
-            val = grid[r][ci]
-            bg, _ = color_map.get(val, color_map[0])
-            c.setFillColor(bg)
-            c.rect(ov_x0 + ci * ov_cell,
-                   ov_y0 + (rows - 1 - r) * ov_cell,
-                   ov_cell, ov_cell, fill=1, stroke=0)
-
+    # Draw plain light-grey filled rectangle representing grid aspect ratio
+    c.setFillColor(lightgrey)
     c.setStrokeColor(black)
-    c.setLineWidth(0.5)
-    c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=0, stroke=1)
+    c.setLineWidth(0.8)
+    c.rect(ov_x0, ov_y0, ov_w, ov_h, fill=1, stroke=1)
 
     c.showPage()
 
@@ -310,32 +312,26 @@ def generate_better_dice_pdf(filepath, grid, project_name):
                          f"Project: {project_name}  |  Full grid: {cols} W × {rows} H  |  "
                          f"This section: {q_cols} W × {q_rows} H")
 
-            # ── Thumbnail ─────────────────────────────────────────────
-            t_cell = thumb_sz / max(rows, cols)
-            t_w    = t_cell * cols
-            t_h    = t_cell * rows
-            tx0    = thumb_x + (thumb_sz - t_w) / 2
-            ty0    = thumb_y + (thumb_sz - t_h) / 2
+            # ── Thumbnail — plain silhouette + quadrant highlight ─────
+            # Scale so the full grid fits within thumb_sz × thumb_sz
+            t_scale = thumb_sz / max(rows, cols)
+            t_w     = t_scale * cols
+            t_h     = t_scale * rows
+            tx0     = thumb_x + (thumb_sz - t_w) / 2
+            ty0     = thumb_y + (thumb_sz - t_h) / 2
 
-            for tr in range(rows):
-                for tc in range(cols):
-                    val = grid[tr][tc]
-                    bg, _ = color_map.get(val, color_map[0])
-                    c.setFillColor(bg)
-                    c.rect(tx0 + tc * t_cell,
-                           ty0 + (rows - 1 - tr) * t_cell,
-                           t_cell, t_cell, fill=1, stroke=0)
-
+            # Plain light-grey rectangle representing the full grid outline
+            c.setFillColor(lightgrey)
             c.setStrokeColor(black)
             c.setLineWidth(0.5)
-            c.rect(tx0, ty0, t_w, t_h, fill=0, stroke=1)
+            c.rect(tx0, ty0, t_w, t_h, fill=1, stroke=1)
 
-            # Highlight current quadrant on thumbnail
-            hx = tx0 + c_start * t_cell
-            hy = ty0 + (rows - r_end) * t_cell
-            hw = q_cols * t_cell
-            hh = q_rows * t_cell
-            c.setFillColor(Color(1, 0.4, 0, 0.35))   # semi-transparent orange fill
+            # Orange overlay showing the current quadrant's position
+            hx = tx0 + c_start * t_scale
+            hy = ty0 + (rows - r_end) * t_scale
+            hw = q_cols * t_scale
+            hh = q_rows * t_scale
+            c.setFillColor(Color(1, 0.45, 0, 0.4))
             c.rect(hx, hy, hw, hh, fill=1, stroke=0)
             c.setStrokeColor(Color(0.85, 0.15, 0))
             c.setLineWidth(1.0)
