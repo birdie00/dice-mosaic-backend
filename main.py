@@ -176,15 +176,15 @@ def generate_better_dice_pdf(filepath, grid, project_name):
     margin = 0.25 * inch         # 18 pts
 
     color_map = {
-        0: (Color(0, 0, 0),        white),
-        1: (Color(1, 0, 0),        white),
-        2: (Color(0, 0, 1),        white),
-        3: (Color(1, 0.55, 0),     black),
-        4: (Color(0, 0.5, 0),      white),
-        5: (Color(1, 1, 0),        black),
-        6: (Color(1, 1, 1),        black),
+        0: (Color(17/255,  17/255,  17/255),  white),   # Pure Black
+        1: (Color(74/255,  16/255, 128/255),  white),   # Deep Purple
+        2: (Color(26/255,  58/255, 170/255),  white),   # Royal Blue
+        3: (Color(106/255,191/255,  42/255),  black),   # Lime Green
+        4: (Color(245/255,197/255,  24/255),  black),   # Warm Yellow
+        5: (Color(224/255,120/255,  48/255),  black),   # Warm Orange
+        6: (Color(245/255,240/255, 232/255),  black),   # Cream White
     }
-    color_labels = ["Black", "Red", "Blue", "Orange", "Green", "Yellow", "White"]
+    color_labels = ["Black", "Purple", "Blue", "Green", "Yellow", "Orange", "White"]
 
     c = canvas.Canvas(filepath, pagesize=(pw, ph))
 
@@ -217,12 +217,12 @@ def generate_better_dice_pdf(filepath, grid, project_name):
         c.setFont("Helvetica", 8)
         for i in range(7):
             x = lx
-            bg, _ = color_map[i]
+            bg, fg = color_map[i]
             cnt = sum(row.count(i) for row in grid)
             for j, txt in enumerate([color_labels[i], f"{i} face", f"{cnt}"]):
                 c.setFillColor(bg if j == 0 else white)
                 c.rect(x, ly - rh, cw[j], rh, stroke=1, fill=1)
-                tc = black if (i in [5, 6] and j == 0) else (white if j == 0 else black)
+                tc = fg if j == 0 else black
                 c.setFillColor(tc)
                 c.drawCentredString(x + cw[j] / 2, ly - rh + 3, txt)
                 x += cw[j]
