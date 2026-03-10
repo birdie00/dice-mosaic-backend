@@ -97,7 +97,16 @@ async def analyze_image(
     styles = []
     for style_id, settings in style_settings.items():
         processed = apply_enhancements(base.copy(), **settings)
-        arr = np.array(processed)
+
+        # Pixelate preview: downsample to 25% then upscale with nearest-neighbor.
+        # Creates blocky 4×4-cell regions so the overall composition is visible
+        # but the grid cannot be used directly as a build reference.
+        preview_w = max(1, processed.width // 4)
+        preview_h = max(1, processed.height // 4)
+        img_small = processed.resize((preview_w, preview_h), Image.LANCZOS)
+        img_preview = img_small.resize((processed.width, processed.height), Image.NEAREST)
+
+        arr = np.array(img_preview)
         print(f"[DEBUG] Style {style_id} -> numpy shape: {arr.shape}")  # <-- Check grid shape
 
         grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
