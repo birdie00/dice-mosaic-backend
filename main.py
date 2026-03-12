@@ -16,6 +16,7 @@ from reportlab.lib.units import mm
 import numpy as np
 import os
 import cv2
+import traceback
 
 
 app = FastAPI()
@@ -74,37 +75,41 @@ async def analyze_image(
     grid_height: int = Form(...),
 ):
     print(f"[DEBUG] /analyze received: grid_width={grid_width}, grid_height={grid_height}")
-    if grid_width < 10 or grid_height < 10 or grid_width > 1000 or grid_height > 1000:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Grid size out of range. Must be between 10×10 and 1000×1000."}
-        )
+    try:
+        if grid_width < 10 or grid_height < 10 or grid_width > 1000 or grid_height > 1000:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Grid size out of range. Must be between 10×10 and 1000×1000."}
+            )
 
-    original = Image.open(file.file).convert("L")
-    base = original.resize((grid_width, grid_height))
+        original = Image.open(file.file).convert("L")
+        base = original.resize((grid_width, grid_height))
 
-    print(f"[DEBUG] Resized image to: {base.size}")  # <-- Confirm actual size
+        print(f"[DEBUG] Resized image to: {base.size}")  # <-- Confirm actual size
 
-    style_settings = {
-        1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
-        2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
-        3: {"brightness": 1.3, "contrast": 1.5, "sharpness": 1.4, "clahe": True, "gamma": 0.85},
-        4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
-        5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
-        6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
-    }
+        style_settings = {
+            1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
+            2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
+            3: {"brightness": 1.3, "contrast": 1.5, "sharpness": 1.4, "clahe": True, "gamma": 0.85},
+            4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
+            5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
+            6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
+        }
 
-    styles = []
-    for style_id, settings in style_settings.items():
-        processed = apply_enhancements(base.copy(), **settings)
+        styles = []
+        for style_id, settings in style_settings.items():
+            processed = apply_enhancements(base.copy(), **settings)
 
-        arr = np.array(processed)
-        print(f"[DEBUG] Style {style_id} -> numpy shape: {arr.shape}")
-        grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
+            arr = np.array(processed)
+            print(f"[DEBUG] Style {style_id} -> numpy shape: {arr.shape}")
+            grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
 
-        styles.append({"style_id": style_id, "grid": grid, "full_grid": grid})
+            styles.append({"style_id": style_id, "grid": grid, "full_grid": grid})
 
-    return JSONResponse(content={"styles": styles})
+        return JSONResponse(content={"styles": styles})
+    except Exception as e:
+        print(f"[ERROR] /analyze failed: {traceback.format_exc()}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 
