@@ -28,7 +28,8 @@ app.add_middleware(
     allow_origins=[
         "https://www.pipcasso.com",
         "https://pipcasso.com",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "https://dice-mosaic-frontend.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
