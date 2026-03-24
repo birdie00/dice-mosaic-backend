@@ -548,3 +548,63 @@ async def generate_image(request: Request):
     mosaic.convert("RGB").save(filepath)
 
     return JSONResponse(content={"image_url": f"/static/{filename}"})
+
+
+import json as _json
+
+def apply_smart_rotation(grid: list, img_arr: np.ndarray) -> list:
+    """
+    For each cell containing a 2 or 3, compute the dominant gradient direction
+    in the corresponding image region using numpy Sobel-equivalent (np.gradient),
+    then assign the rotation (0, 90, 180, 270) that best aligns the die dots
+    with the gradient direction. All other cells get rotation 0.
+    """
+    rows = len(grid)
+    cols = len(grid[0]) if rows > 0 else 0
+
+    # Sobel-equivalent using np.gradient: returns [dy, dx]
+    gy, gx = np.gradient(img_arr.astype(np.float64))
+
+    rotations = []
+    for r in range(rows):
+        row_rots = []
+        for c in range(cols):
+            val = grid[r][c]
+            if val in (2, 3):
+                # Sample gradient in a small neighbourhood around this cell
+                r0, r1 = max(0, r - 1), min(rows, r + 2)
+                c0, c1 = max(0, c - 1), min(cols, c + 2)
+                mean_gx = float(np.mean(gx[r0:r1, c0:c1]))
+                mean_gy = float(np.mean(gy[r0:r1, c0:c1]))
+                # Angle of dominant gradient (-180..180)
+                angle = np.degrees(np.arctan2(mean_gy, mean_gx))
+                # Snap to nearest 90° step
+                rotation = int(round(angle / 90.0) * 90) % 360
+                row_rots.append(rotation)
+            else:
+                row_rots.append(0)
+        rotations.append(row_rots)
+    return rotations
+
+
+@app.post("/smart-rotation")
+async def smart_rotation_endpoint(
+    file: UploadFile = File(...),
+    grid_data: str = Form(...),
+):
+    try:
+        grid = _json.loads(grid_data)
+        rows = len(grid)
+        cols = len(grid[0]) if rows > 0 else 0
+        if rows == 0 or cols == 0:
+            return JSONResponse(status_code=400, content={"error": "Empty grid"})
+
+        contents = await file.read()
+        img = Image.open(__import__("io").BytesIO(contents)).convert("L")
+        img_arr = np.array(img.resize((cols, rows), Image.LANCZOS), dtype=np.float64)
+
+        rotations = apply_smart_rotation(grid, img_arr)
+        return JSONResponse(content={"rotations": rotations})
+    except Exception as e:
+        print(f"[ERROR] /smart-rotation failed: {traceback.format_exc()}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
