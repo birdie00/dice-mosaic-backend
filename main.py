@@ -28,10 +28,9 @@ supabase_client = create_client(
 
 def upload_to_supabase(filepath: str, filename: str, content_type: str) -> str:
     with open(filepath, "rb") as f:
-        data = f.read()
-    supabase_client.storage.from_("pipcasso-files").upload(
-        filename, data, {"content-type": content_type}
-    )
+        supabase_client.storage.from_("pipcasso-files").upload(
+            filename, f, {"content-type": content_type}
+        )
     return supabase_client.storage.from_("pipcasso-files").get_public_url(filename)
 
 
