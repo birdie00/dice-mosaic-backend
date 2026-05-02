@@ -18,6 +18,7 @@ import os
 import cv2
 import traceback
 import tempfile
+import png
 from supabase import create_client, Client
 
 supabase_client = create_client(
@@ -541,8 +542,7 @@ async def generate_image(request: Request):
     print("🧾 dice_dir:", dice_dir)
     print("📂 dice_dir contents:", os.listdir(dice_dir) if os.path.exists(dice_dir) else "MISSING")
 
-    # Load and resize dice images
-    dice_size = 20 if resolution == "low" else 40
+    dice_size = 20 if resolution == "low" else 75
 
     try:
         dice_images = {
@@ -558,21 +558,32 @@ async def generate_image(request: Request):
     img_width = width * dice_size
     img_height = height * dice_size
 
-    mosaic = Image.new("RGBA", (img_width, img_height), (255, 255, 255, 255))
-
-    for y, row in enumerate(grid):
-        for x, val in enumerate(row):
-            dice_val = int(val)
-            if dice_val in dice_images:
-                dice_img = dice_images[dice_val]
-                mosaic.paste(dice_img, (x * dice_size, y * dice_size), mask=dice_img)
-
     filename = f"dice_mosaic_{resolution}_{uuid4().hex}.png"
 
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         filepath = tmp.name
-    mosaic.convert("RGB").save(filepath)
-    del mosaic
+
+    try:
+        writer = png.Writer(width=img_width, height=img_height, greyscale=False)
+
+        def row_generator():
+            for grid_row in grid:
+                strip = Image.new("RGB", (img_width, dice_size), (255, 255, 255))
+                for x, val in enumerate(grid_row):
+                    dice_val = int(val)
+                    if dice_val in dice_images:
+                        strip.paste(dice_images[dice_val], (x * dice_size, 0), mask=dice_images[dice_val])
+                strip_arr = np.array(strip)
+                del strip
+                for pixel_row in strip_arr:
+                    yield pixel_row.reshape(-1).tolist()
+
+        with open(filepath, "wb") as f:
+            writer.write(f, row_generator())
+    except Exception as e:
+        os.unlink(filepath)
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": f"Image generation failed: {str(e)}"})
 
     try:
         public_url = upload_to_supabase(filepath, filename, "image/png")
