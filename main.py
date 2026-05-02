@@ -17,6 +17,22 @@ import numpy as np
 import os
 import cv2
 import traceback
+import tempfile
+from supabase import create_client, Client
+
+supabase_client = create_client(
+    os.environ["SUPABASE_URL"],
+    os.environ["SUPABASE_SERVICE_KEY"]
+)
+
+
+def upload_to_supabase(filepath: str, filename: str, content_type: str) -> str:
+    with open(filepath, "rb") as f:
+        data = f.read()
+    supabase_client.storage.from_("pipcasso-files").upload(
+        filename, data, {"content-type": content_type}
+    )
+    return supabase_client.storage.from_("pipcasso-files").get_public_url(filename)
 
 
 app = FastAPI()
@@ -484,16 +500,23 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
     print(f"[DEBUG] PDF generation: received grid size = {actual_width} cols x {actual_height} rows")
     project_name = grid_data.project_name
     filename = f"dice_map_{uuid4().hex}.pdf"
-    filepath = os.path.join("static", filename)
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        filepath = tmp.name
 
     try:
         generate_better_dice_pdf(filepath, grid, project_name)
     except Exception as e:
-        import traceback
+        os.unlink(filepath)
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e), "traceback": traceback.format_exc()})
 
-    return JSONResponse(content={"dice_map_url": f"/static/{filename}"})
+    try:
+        public_url = upload_to_supabase(filepath, filename, "application/pdf")
+    finally:
+        os.unlink(filepath)
+
+    return JSONResponse(content={"dice_map_url": public_url})
 from fastapi import Request
 from PIL import ImageDraw
 
@@ -544,10 +567,17 @@ async def generate_image(request: Request):
                 mosaic.paste(dice_img, (x * dice_size, y * dice_size), mask=dice_img)
 
     filename = f"dice_mosaic_{resolution}_{uuid4().hex}.png"
-    filepath = os.path.join("static", filename)
+
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        filepath = tmp.name
     mosaic.convert("RGB").save(filepath)
 
-    return JSONResponse(content={"image_url": f"/static/{filename}"})
+    try:
+        public_url = upload_to_supabase(filepath, filename, "image/png")
+    finally:
+        os.unlink(filepath)
+
+    return JSONResponse(content={"image_url": public_url})
 
 
 import json as _json

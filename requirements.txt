@@ -5,3 +5,4 @@ reportlab
 python-multipart
 numpy
 opencv-python-headless
+supabase
