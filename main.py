@@ -572,6 +572,7 @@ async def generate_image(request: Request):
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         filepath = tmp.name
     mosaic.convert("RGB").save(filepath)
+    del mosaic
 
     try:
         public_url = upload_to_supabase(filepath, filename, "image/png")
