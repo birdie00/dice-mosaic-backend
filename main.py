@@ -513,10 +513,12 @@ async def generate_dice_map_pdf(grid_data: GridRequest):
 
     try:
         public_url = upload_to_supabase(filepath, filename, "application/pdf")
+        return JSONResponse(content={"dice_map_url": public_url})
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": f"Upload failed: {str(e)}"})
     finally:
         os.unlink(filepath)
-
-    return JSONResponse(content={"dice_map_url": public_url})
 from fastapi import Request
 from PIL import ImageDraw
 
@@ -574,10 +576,12 @@ async def generate_image(request: Request):
 
     try:
         public_url = upload_to_supabase(filepath, filename, "image/png")
+        return JSONResponse(content={"image_url": public_url})
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": f"Upload failed: {str(e)}"})
     finally:
         os.unlink(filepath)
-
-    return JSONResponse(content={"image_url": public_url})
 
 
 import json as _json
