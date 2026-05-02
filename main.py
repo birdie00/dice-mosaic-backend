@@ -105,12 +105,12 @@ async def analyze_image(
         print(f"[DEBUG] Resized image to: {base.size}")  # <-- Confirm actual size
 
         style_settings = {
-            1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True, "gamma": 0.8},
-            2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True, "gamma": 0.9},
-            3: {"brightness": 1.3, "contrast": 1.5, "sharpness": 1.4, "clahe": True, "gamma": 0.85},
-            4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True, "gamma": 1.0},
-            5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
-            6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True, "gamma": 0.9},
+            1: {"brightness": 1.0,  "contrast": 1.4, "sharpness": 1.5, "clahe": True,  "gamma": 0.9},   # Balanced
+            2: {"brightness": 1.8,  "contrast": 0.8, "sharpness": 0.8, "clahe": False, "gamma": 0.6},   # Soft/Light
+            3: {"brightness": 1.0,  "contrast": 2.2, "sharpness": 1.8, "clahe": True,  "gamma": 1.0},   # High Contrast
+            4: {"brightness": 0.65, "contrast": 2.0, "sharpness": 1.4, "clahe": False, "gamma": 1.4},   # Dramatic
+            5: {"brightness": 1.0,  "contrast": 1.6, "sharpness": 3.5, "clahe": True,  "gamma": 0.85},  # Detailed
+            6: {"brightness": 1.1,  "contrast": 1.1, "sharpness": 0.5, "clahe": False, "gamma": 0.95},  # Smooth
         }
 
         styles = []
