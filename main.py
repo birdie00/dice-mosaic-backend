@@ -542,7 +542,7 @@ async def generate_image(request: Request):
     print("📂 dice_dir contents:", os.listdir(dice_dir) if os.path.exists(dice_dir) else "MISSING")
 
     # Load and resize dice images
-    dice_size = 20 if resolution == "low" else 75
+    dice_size = 20 if resolution == "low" else 40
 
     try:
         dice_images = {
