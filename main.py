@@ -100,6 +100,14 @@ async def analyze_image(
             )
 
         original = Image.open(file.file).convert("L")
+
+        # Stretch tonal range so darkest pixel → 0, brightest → 255
+        _arr = np.array(original, dtype=np.float32)
+        _lo, _hi = _arr.min(), _arr.max()
+        if _hi > _lo:
+            _arr = (_arr - _lo) * (255.0 / (_hi - _lo))
+            original = Image.fromarray(_arr.astype(np.uint8))
+
         base = original.resize((grid_width, grid_height))
 
         print(f"[DEBUG] Resized image to: {base.size}")  # <-- Confirm actual size
