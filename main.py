@@ -101,24 +101,17 @@ async def analyze_image(
 
         original = Image.open(file.file).convert("L")
 
-        # Stretch tonal range so darkest pixel → 0, brightest → 255
-        _arr = np.array(original, dtype=np.float32)
-        _lo, _hi = _arr.min(), _arr.max()
-        if _hi > _lo:
-            _arr = (_arr - _lo) * (255.0 / (_hi - _lo))
-            original = Image.fromarray(_arr.astype(np.uint8))
-
         base = original.resize((grid_width, grid_height))
 
         print(f"[DEBUG] Resized image to: {base.size}")  # <-- Confirm actual size
 
         style_settings = {
-            1: {"brightness": 1.0,  "contrast": 1.4, "sharpness": 1.5, "clahe": True,  "gamma": 0.9},   # Balanced
-            2: {"brightness": 1.4,  "contrast": 0.8, "sharpness": 0.8, "clahe": False, "gamma": 0.6},   # Soft/Light
-            3: {"brightness": 1.0,  "contrast": 2.2, "sharpness": 1.8, "clahe": True,  "gamma": 1.0},   # High Contrast
-            4: {"brightness": 0.65, "contrast": 2.0, "sharpness": 1.4, "clahe": False, "gamma": 1.4},   # Dramatic
-            5: {"brightness": 1.0,  "contrast": 1.6, "sharpness": 3.5, "clahe": True,  "gamma": 0.85},  # Detailed
-            6: {"brightness": 1.1,  "contrast": 1.1, "sharpness": 0.5, "clahe": False, "gamma": 0.95},  # Smooth
+            1: {"brightness": 1.0, "contrast": 1.5, "sharpness": 2.0, "clahe": True,  "gamma": 0.8},
+            2: {"brightness": 1.1, "contrast": 1.2, "sharpness": 1.3, "clahe": True,  "gamma": 0.9},
+            3: {"brightness": 1.3, "contrast": 1.5, "sharpness": 1.4, "clahe": True,  "gamma": 0.85},
+            4: {"brightness": 0.6, "contrast": 1.8, "sharpness": 1.4, "clahe": True,  "gamma": 1.0},
+            5: {"brightness": 1.0, "contrast": 1.2, "sharpness": 1.3, "clahe": False, "gamma": 1.0},
+            6: {"brightness": 0.8, "contrast": 1.3, "sharpness": 1.7, "clahe": True,  "gamma": 0.9},
         }
 
         styles = []
@@ -127,11 +120,6 @@ async def analyze_image(
 
             arr = np.array(processed, dtype=np.float32)
             print(f"[DEBUG] Style {style_id} -> numpy shape: {arr.shape}")
-            # Stretch each style's output to the full 0–255 range before thresholding
-            # so the complete 0–6 dice range is always used regardless of enhancement values
-            lo, hi = arr.min(), arr.max()
-            if hi > lo:
-                arr = (arr - lo) * (255.0 / (hi - lo))
             arr = arr.astype(np.uint8)
             grid = [[int(val / 256 * 7) for val in row] for row in arr.tolist()]
 
